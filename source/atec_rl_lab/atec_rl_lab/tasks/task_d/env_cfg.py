@@ -26,7 +26,7 @@ class RewardsCfg:
                 "threshold": [-1.4, 2.0],
                 "reward_value": [2, 20.0],
                 "debug": False,
-                "visual_assets": True,
+                "visual_assets": False,
                 },
         weight=1.0,
     )
@@ -103,6 +103,9 @@ class TaskDEnvCfg(BaseEnvCfg):
         self.observations.extero.enable_corruption = False
         self.events.physics_material = None
         self.events.base_external_force_torque = None
+
+        # Cameras are not used for Task D PPO training and can trigger USD/Fabric hierarchy errors.
+        self.observations.image = None
 
         # Trun off terminations
         self.terminations.illegal_contact = None
