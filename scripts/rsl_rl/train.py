@@ -131,6 +131,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env_cfg.seed = agent_cfg.seed
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
     env_cfg.sim.use_fabric = not args_cli.disable_fabric
+    print(f"[INFO] Effective env cfg: {type(env_cfg).__module__}.{type(env_cfg).__name__}")
+    if hasattr(env_cfg, "terminations"):
+        print(f"[INFO] Effective termination fall: {getattr(env_cfg.terminations, 'fall', None)}")
+        print(f"[INFO] Effective termination x_reached: {getattr(env_cfg.terminations, 'x_reached', None)}")
+    if hasattr(env_cfg, "commands") and hasattr(env_cfg.commands, "base_velocity"):
+        print(f"[INFO] Effective lin_vel_x: {env_cfg.commands.base_velocity.ranges.lin_vel_x}")
     # check for invalid combination of CPU device with distributed training
     if args_cli.distributed and args_cli.device is not None and "cpu" in args_cli.device:
         raise ValueError(
@@ -174,6 +180,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+    if hasattr(env.unwrapped, "termination_manager"):
+        print(f"[INFO] Runtime termination terms: {env.unwrapped.termination_manager.active_terms}")
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):
