@@ -56,6 +56,14 @@ def flat_orientation_l2(
     return reward
 
 
+def upright(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    robot = env.scene[asset_cfg.name]
+    return torch.clamp(-robot.data.projected_gravity_b[:, 2], 0.0, 1.0)
+
+
 class RewardCrossX(ManagerTermBase):
     """One-time reward when robot crosses x threshold(s).
     """

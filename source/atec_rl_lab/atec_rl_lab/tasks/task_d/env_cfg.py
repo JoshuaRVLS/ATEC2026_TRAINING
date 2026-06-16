@@ -37,6 +37,10 @@ class RewardsCfg:
         func=atec_mdp.flat_orientation_l2,
         weight=-1.0,
     )
+    upright = RewTerm(
+        func=atec_mdp.upright,
+        weight=1.0,
+    )
     achieve = RewTerm(
         func=atec_mdp.RewardCrossX,
         params={"asset_cfg": SceneEntityCfg("robot"),
@@ -241,10 +245,10 @@ class TaskDB2PiperLidarTeacherEnvCfg(TaskDEnvB2Cfg):
         self.observations.image = None
         self.commands.base_velocity.heading_command = False
         self.commands.base_velocity.rel_heading_envs = 0.0
-        self.commands.base_velocity.ranges.lin_vel_x = (0.4, 0.8)
+        self.commands.base_velocity.ranges.lin_vel_x = (0.1, 0.3)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
         self.actions.joint_pos.scale = 0.25
         self.events.reset_robot_joints = None
         self.episode_length_s = 20.0
-        self.terminations.fall.params["minimum_height"] = -0.5
+        self.terminations.fall = None
