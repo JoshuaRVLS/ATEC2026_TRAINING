@@ -16,6 +16,7 @@ def robot_x_greater_than(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     x_threshold: float = 2.0,
 ) -> torch.Tensor:
-    """Terminate when robot root x (world frame) is greater than threshold."""
+    """Terminate when robot root x in the local environment frame is greater than threshold."""
     robot = env.scene[asset_cfg.name]
-    return robot.data.root_pos_w[:, 0] > float(x_threshold)
+    robot_x = robot.data.root_pos_w[:, 0] - env.scene.env_origins[:, 0]
+    return robot_x > float(x_threshold)

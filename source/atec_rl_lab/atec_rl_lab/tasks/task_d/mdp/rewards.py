@@ -292,7 +292,7 @@ class RewardCrossX(ManagerTermBase):
 
         robot = env.scene[asset_cfg.name]
 
-        root_pos_x = robot.data.root_pos_w[:, 0]
+        root_pos_x = robot.data.root_pos_w[:, 0] - env.scene.env_origins[:, 0]
         thresholds_t = torch.tensor(thresholds, device=root_pos_x.device, dtype=root_pos_x.dtype)
         reward_values_t = torch.tensor(reward_values, device=root_pos_x.device, dtype=root_pos_x.dtype)
 
@@ -371,7 +371,7 @@ class RewardBoxXInRange(ManagerTermBase):
         debug: bool = False,
     ) -> torch.Tensor:
         box = env.scene[asset_cfg.name]
-        box_x = box.data.root_pos_w[:, 0]
+        box_x = box.data.root_pos_w[:, 0] - env.scene.env_origins[:, 0]
 
         x_min_list, x_max_list = self._normalize_ranges(x_min=x_min, x_max=x_max)
 
