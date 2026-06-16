@@ -20,6 +20,23 @@ from .terrain import TASK_D_TERRAIN_CFG, PitAndPlatformTerrainCfg
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
+    track_lin_vel_xy = RewTerm(
+        func=atec_mdp.track_lin_vel_xy_exp,
+        params={"command_name": "base_velocity", "std": 0.5},
+        weight=3.0,
+    )
+    lin_vel_z = RewTerm(
+        func=atec_mdp.lin_vel_z_l2,
+        weight=-2.0,
+    )
+    ang_vel_xy = RewTerm(
+        func=atec_mdp.ang_vel_xy_l2,
+        weight=-0.05,
+    )
+    flat_orientation = RewTerm(
+        func=atec_mdp.flat_orientation_l2,
+        weight=-1.0,
+    )
     achieve = RewTerm(
         func=atec_mdp.RewardCrossX,
         params={"asset_cfg": SceneEntityCfg("robot"),
@@ -222,3 +239,8 @@ class TaskDB2PiperLidarTeacherEnvCfg(TaskDEnvB2Cfg):
 
         self.observations.policy = None
         self.observations.image = None
+        self.commands.base_velocity.heading_command = False
+        self.commands.base_velocity.rel_heading_envs = 0.0
+        self.commands.base_velocity.ranges.lin_vel_x = (0.4, 0.8)
+        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)

@@ -5,9 +5,55 @@ from typing import TYPE_CHECKING, Sequence
 
 import isaaclab.sim as sim_utils
 from isaaclab.managers.manager_base import ManagerTermBase
+from isaaclab.managers import SceneEntityCfg
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
+
+
+def track_lin_vel_xy_exp(
+    env: ManagerBasedRLEnv,
+    std: float,
+    command_name: str,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    robot = env.scene[asset_cfg.name]
+    command_xy = env.command_manager.get_command(command_name)[:, :2]
+    velocity_xy = robot.data.root_lin_vel_b[:, :2]
+    velocity_error = torch.sum(torch.square(command_xy - velocity_xy), dim=1)
+    reward = torch.exp(-velocity_error / std**2)
+    reward *= torch.clamp(-robot.data.projected_gravity_b[:, 2], 0.0, 0.7) / 0.7
+    return reward
+
+
+def lin_vel_z_l2(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    robot = env.scene[asset_cfg.name]
+    reward = torch.square(robot.data.root_lin_vel_b[:, 2])
+    reward *= torch.clamp(-robot.data.projected_gravity_b[:, 2], 0.0, 0.7) / 0.7
+    return reward
+
+
+def ang_vel_xy_l2(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    robot = env.scene[asset_cfg.name]
+    reward = torch.sum(torch.square(robot.data.root_ang_vel_b[:, :2]), dim=1)
+    reward *= torch.clamp(-robot.data.projected_gravity_b[:, 2], 0.0, 0.7) / 0.7
+    return reward
+
+
+def flat_orientation_l2(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    robot = env.scene[asset_cfg.name]
+    reward = torch.sum(torch.square(robot.data.projected_gravity_b[:, :2]), dim=1)
+    reward *= torch.clamp(-robot.data.projected_gravity_b[:, 2], 0.0, 0.7) / 0.7
+    return reward
 
 
 class RewardCrossX(ManagerTermBase):
@@ -349,4 +395,3 @@ class RewardBoxXInRange(ManagerTermBase):
             )
 
         return reward
-
