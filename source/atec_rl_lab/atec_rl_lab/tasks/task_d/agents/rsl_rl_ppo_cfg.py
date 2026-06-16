@@ -14,15 +14,17 @@ class TaskDB2PiperLidarPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     experiment_name = "task_d_b2piper_lidar_teacher"
 
     obs_groups = {
-        "policy": ['policy']
+        "policy": ["policy"],
+        "critic": ["policy"],
     }
 
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std = 1.0,
-        actor_obs_normalization=False,
-        critic_obs_normalization=False,
-        actor_hidden_dims=[512,256,128],
-        critic_hidden_dims=[512,256,128],
+        init_noise_std=0.5,
+        noise_std_type="log",
+        actor_obs_normalization=True,
+        critic_obs_normalization=True,
+        actor_hidden_dims=[512, 256, 128],
+        critic_hidden_dims=[512, 256, 128],
         activation="elu"
     )
 
@@ -33,7 +35,7 @@ class TaskDB2PiperLidarPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         entropy_coef=0.01,
         num_learning_epochs=5,
         num_mini_batches=4,
-        learning_rate=1.0e-3,
+        learning_rate=3.0e-4,
         schedule="adaptive",
         gamma=0.99,
         lam=0.95,

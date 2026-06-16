@@ -175,6 +175,8 @@ class ObservationsCfg:
       lidar_scan = ObsTerm(
         func=mdp.height_scan,
         params={"sensor_cfg": SceneEntityCfg("lidar_sensor")},
+        clip=(-5.0, 5.0),
+        scale=0.2,
       )
 
       def __post_init__(self):
