@@ -75,7 +75,7 @@ def pit_and_platform_terrain(
     )
     mesh_list.append(pit_bottom)
     mesh_list.append(platform)
-    origin = np.array([cfg.size[0] * 0.15, cfg.size[1] / 2, 0.0])
+    origin = np.array([cfg.size[0] * 0.4, cfg.size[1] / 2, 0.0])
     return mesh_list, origin
 
 

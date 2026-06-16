@@ -20,7 +20,7 @@ class TaskDB2PiperLidarPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     }
 
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=0.5,
+        init_noise_std=0.2,
         noise_std_type="log",
         actor_obs_normalization=True,
         critic_obs_normalization=True,
