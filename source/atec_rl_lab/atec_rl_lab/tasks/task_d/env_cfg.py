@@ -246,7 +246,5 @@ class TaskDB2PiperLidarTeacherEnvCfg(TaskDEnvB2Cfg):
         self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
         self.actions.joint_pos.scale = 0.25
         self.events.reset_robot_joints = None
-        self.terminations.fall = None
-        self.terminations.x_reached = None
-        self.rewards.achieve = None
-        self.rewards.box_in_target_x = None
+        self.episode_length_s = 20.0
+        self.terminations.fall.params["minimum_height"] = -0.5
