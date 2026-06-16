@@ -11,6 +11,7 @@ class TaskDB2PiperLidarPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 10000
     save_interval = 100
+    check_for_nan = True
     experiment_name = "task_d_b2piper_lidar_teacher"
 
     obs_groups = {
