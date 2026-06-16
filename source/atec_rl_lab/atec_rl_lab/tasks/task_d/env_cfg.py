@@ -161,14 +161,6 @@ class TaskDEnvTron1Cfg(TaskDEnvCfg):
         self.actions.joint_pos.joint_names = joint_names
 
 
-# Biji Teacher
-@configclass
-class TaskDB2PiperLidarTeacherEnvCfg(TaskDEnvB2Cfg):
-    def __post_init__(self):
-        super().__post_init__()
-
-        self.actions.joint_pos_arm = None 
-
 @configclass
 class TaskDEnvB2Cfg(TaskDEnvCfg):
     def __post_init__(self):
@@ -218,3 +210,11 @@ class TaskDEnvB2WCfg(TaskDEnvCfg):
         self.observations.proprio.joint_pos.params["asset_cfg"].joint_names = joint_names
         self.observations.proprio.joint_vel.params["asset_cfg"].joint_names = joint_names
         self.actions.joint_pos.joint_names = joint_names
+
+# Biji Teacher
+@configclass
+class TaskDB2PiperLidarTeacherEnvCfg(TaskDEnvB2Cfg):
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.actions.joint_pos_arm = None 
