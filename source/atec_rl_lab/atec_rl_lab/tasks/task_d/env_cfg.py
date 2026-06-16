@@ -221,3 +221,6 @@ class TaskDB2PiperLidarTeacherEnvCfg(TaskDEnvB2Cfg):
         super().__post_init__()
 
         self.actions.joint_pos_arm = None 
+        self.observations.proprio = None
+        self.observations.extero = None
+        self.observations.image = None

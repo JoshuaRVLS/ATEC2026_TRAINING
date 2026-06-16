@@ -14,8 +14,7 @@ class TaskDB2PiperLidarPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     experiment_name = "task_d_b2piper_lidar_teacher"
 
     obs_groups = {
-        "actor": ["proprio", "extero"],
-        "critic": ["proprio", "extero"],
+        "policy": ['policy']
     }
 
     policy = RslRlPpoActorCriticCfg(

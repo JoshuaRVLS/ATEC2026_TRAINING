@@ -141,6 +141,46 @@ class ActionsCfg:
 @configclass
 class ObservationsCfg:
     """Observation specifications for the MDP."""
+    @configclass
+    class PolicyObservationsCfg(ObsGroup):
+      """Observations for RSL-RL policy training."""
+
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1)
+        )
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2)
+        )
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands,
+            params={"command_name": "base_velocity"},
+            clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=".*", preserve_order=True)},
+            noise=Unoise(n_min=-0.01, n_max=0.01),
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg("robot", joint_names=".*", preserve_order=True)},
+            noise=Unoise(n_min=-1.5, n_max=1.5),
+        )
+        actions = ObsTerm(func=mdp.last_action)
+        lidar_scan = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("lidar_sensor")},
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
 
     @configclass
     class ProprioObservationsCfg(ObsGroup):
@@ -227,9 +267,11 @@ class ObservationsCfg:
             self.concatenate_terms = False
 
     # observation groups
+    # biji
     proprio: ProprioObservationsCfg = ProprioObservationsCfg()
     extero: ExteroObservationsCfg = ExteroObservationsCfg()
     image: ImageObservationsCfg = ImageObservationsCfg()
+    policy: PolicyObservationsCfg = PolicyObservationsCfg()
 
 @configclass
 class EventCfg:

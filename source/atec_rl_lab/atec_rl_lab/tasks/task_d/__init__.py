@@ -1,7 +1,7 @@
 import gymnasium as gym
 
 from .terrain import TASK_D_TERRAIN_CFG
-from .env_cfg import TaskDEnvCfg, TaskDEnvB2Cfg
+from .env_cfg import TaskDEnvCfg, TaskDEnvB2Cfg, TaskDB2PiperLidarTeacherEnvCfg
 from . import agents
 
 # Ini juga biji
