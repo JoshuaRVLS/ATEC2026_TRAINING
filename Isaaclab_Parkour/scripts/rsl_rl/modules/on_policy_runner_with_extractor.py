@@ -225,7 +225,9 @@ class OnPolicyRunnerWithExtractor(OnPolicyRunner):
                     # Step the environment
                     obs, rewards, dones, infos = self.env.step(actions.to(self.env.device))
                     # Move to device
-                    obs, rewards, dones = (obs.to(self.device), rewards.to(self.device), dones.to(self.device))
+                    obs = obs.to(self.device)
+                    rewards = rewards.to(self.device, dtype=torch.float32)
+                    dones = dones.to(self.device, dtype=torch.bool)
                     # perform normalization
                     obs = self.obs_normalizer(obs)
                     if self.privileged_obs_type is not None:
