@@ -133,11 +133,13 @@ class OnPolicyRunnerWithExtractor(OnPolicyRunner):
             self.privileged_obs_normalizer = torch.nn.Identity().to(self.device)  # no normalization
         if self.depth_encoder_cfg is None:
             self.alg.init_storage(
-                self.env.num_envs,
-                self.num_steps_per_env,
-                {"policy": [num_obs], "critic": [num_privileged_obs]},
-                [self.env.num_actions],
-                [self.env.num_actions],
+                num_envs=self.env.num_envs,
+                num_transitions_per_env=self.num_steps_per_env,
+                obs={
+                    "policy": torch.zeros(num_obs, device=self.device),
+                    "critic": torch.zeros(num_privileged_obs, device=self.device),
+                },
+                actions=torch.zeros(self.env.num_actions, device=self.device),
             )
 
         self.disable_logs = self.is_distributed and self.gpu_global_rank != 0
