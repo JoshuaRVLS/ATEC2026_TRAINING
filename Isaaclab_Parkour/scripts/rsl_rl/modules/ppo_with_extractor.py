@@ -404,20 +404,39 @@ class PPOWithExtractor(PPO):
             generator = self.storage.recurrent_mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
         else:
             generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
-        for (
-            obs_batch,
-            critic_obs_batch,
-            actions_batch,
-            target_values_batch,
-            advantages_batch,
-            returns_batch,
-            old_actions_log_prob_batch,
-            old_mu_batch,
-            old_sigma_batch,
-            hid_states_batch,
-            masks_batch,
-            rnd_state_batch,
-        ) in generator:
+        for batch in generator:
+            if len(batch) == 10:
+                (
+                    obs_batch_td,
+                    actions_batch,
+                    target_values_batch,
+                    advantages_batch,
+                    returns_batch,
+                    old_actions_log_prob_batch,
+                    old_mu_batch,
+                    old_sigma_batch,
+                    hid_states_batch,
+                    masks_batch,
+                ) = batch
+                obs_batch = obs_batch_td["policy"]
+            else:
+                (
+                    obs_batch,
+                    critic_obs_batch,
+                    actions_batch,
+                    target_values_batch,
+                    advantages_batch,
+                    returns_batch,
+                    old_actions_log_prob_batch,
+                    old_mu_batch,
+                    old_sigma_batch,
+                    hid_states_batch,
+                    masks_batch,
+                    rnd_state_batch,
+                ) = batch
+                if isinstance(obs_batch, TensorDict):
+                    obs_batch = obs_batch["policy"]
+
             with torch.inference_mode():
                 self.policy.act(obs_batch, 
                                 hist_encoding=True, 
