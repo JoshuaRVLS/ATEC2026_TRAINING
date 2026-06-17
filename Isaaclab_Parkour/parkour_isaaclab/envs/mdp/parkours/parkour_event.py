@@ -163,15 +163,16 @@ class ParkourEvent(ParkourTerm):
                     torch.tensor((self.terrain.cfg.terrain_generator.size[1] + \
                                   self._reset_offset, 0)).to(self.device)
 
-        self.dis_to_start_pos = torch.norm(start_pos - self.robot.data.root_pos_w[env_ids, :2], dim=1)
+        self.dis_to_start_pos[env_ids] = torch.norm(start_pos - self.robot.data.root_pos_w[env_ids, :2], dim=1)
         threshold = self.env.command_manager.get_command("base_velocity")[env_ids, 0] * self.episode_length_s
         move_up_distance = torch.maximum(
             self.curriculum_move_up_scale * threshold,
             torch.full_like(threshold, self.curriculum_min_up_distance),
         )
         move_down_distance = self.curriculum_move_down_scale * threshold
-        move_up = self.dis_to_start_pos > move_up_distance
-        move_down = self.dis_to_start_pos < move_down_distance
+        reset_dist_to_start = self.dis_to_start_pos[env_ids]
+        move_up = reset_dist_to_start > move_up_distance
+        move_down = reset_dist_to_start < move_down_distance
 
         level_delta = move_up.to(self.terrain.terrain_levels.dtype) - move_down.to(self.terrain.terrain_levels.dtype)
         new_levels = self.terrain.terrain_levels[env_ids] + level_delta
