@@ -55,6 +55,7 @@ import time
 import torch
 
 from scripts.rsl_rl.modules.on_policy_runner_with_extractor import OnPolicyRunnerWithExtractor
+from rsl_rl.runners import OnPolicyRunner
 
 from isaaclab.envs import DirectMARLEnv, multi_agent_to_single_agent
 from isaaclab.utils.assets import retrieve_file_path
@@ -123,13 +124,19 @@ def main():
 
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     # load previously trained model
-    ppo_runner = OnPolicyRunnerWithExtractor(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+    if agent_cfg.algorithm.class_name in ["PPOWithExtractor", "DistillationWithExtractor"]:
+        ppo_runner = OnPolicyRunnerWithExtractor(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+    else:
+        env.return_tensordict = True
+        ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     ppo_runner.load(resume_path)
     print(ppo_runner)
     # obtain the trained policy for inference
 
-    estimator = ppo_runner.get_estimator_inference_policy(device=env.device) 
-    if agent_cfg.algorithm.class_name == "DistillationWithExtractor":
+    if agent_cfg.algorithm.class_name not in ["PPOWithExtractor", "DistillationWithExtractor"]:
+        policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
+    elif agent_cfg.algorithm.class_name == "DistillationWithExtractor":
+        estimator = ppo_runner.get_estimator_inference_policy(device=env.device)
         policy = ppo_runner.get_inference_depth_policy(device=env.unwrapped.device)
         depth_encoder = ppo_runner.get_depth_encoder_inference_policy(device=env.device)
         policy_nn = ppo_runner.alg.depth_actor
@@ -151,6 +158,7 @@ def main():
                         )
 
     else:
+        estimator = ppo_runner.get_estimator_inference_policy(device=env.device)
         policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
         policy_nn = ppo_runner.alg.policy
         export_model_dir = os.path.join(os.path.dirname(resume_path), "exported_teacher")
@@ -160,10 +168,11 @@ def main():
         )
 
     dt = env.unwrapped.step_dt
-    estimator_paras = agent_cfg.to_dict()["estimator"]
-    num_prop = estimator_paras["num_prop"]
-    num_scan = estimator_paras["num_scan"]
-    num_priv_explicit = estimator_paras["num_priv_explicit"]
+    if agent_cfg.algorithm.class_name in ["PPOWithExtractor", "DistillationWithExtractor"]:
+        estimator_paras = agent_cfg.to_dict()["estimator"]
+        num_prop = estimator_paras["num_prop"]
+        num_scan = estimator_paras["num_scan"]
+        num_priv_explicit = estimator_paras["num_priv_explicit"]
     # reset environment
     obs, extras = env.get_observations()
     timestep = 0
@@ -171,7 +180,10 @@ def main():
     while simulation_app.is_running():
         start_time = time.time()
         # run everything in inference mode
-        if agent_cfg.algorithm.class_name != "DistillationWithExtractor":
+        if agent_cfg.algorithm.class_name not in ["PPOWithExtractor", "DistillationWithExtractor"]:
+            with torch.inference_mode():
+                actions = policy(obs)
+        elif agent_cfg.algorithm.class_name != "DistillationWithExtractor":
             with torch.inference_mode():
                 # agent stepping
                 obs[:, num_prop+num_scan:num_prop+num_scan+num_priv_explicit] = estimator.inference(obs[:, :num_prop])

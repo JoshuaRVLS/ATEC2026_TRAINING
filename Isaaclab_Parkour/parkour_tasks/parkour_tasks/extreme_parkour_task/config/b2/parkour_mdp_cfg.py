@@ -10,6 +10,7 @@ from parkour_tasks.extreme_parkour_task.config.go2.parkour_mdp_cfg import (
     TeacherRewardsCfg,
     TerminationsCfg,
 )
+from parkour_isaaclab.envs.mdp import observations
 
 
 B2_BASE_BODY = "base_link"
@@ -33,6 +34,13 @@ B2_LEG_JOINTS = [
 @configclass
 class B2TeacherObservationsCfg(TeacherObservationsCfg):
     def __post_init__(self):
+        self.policy.extreme_parkour_observations.params["base_body_name"] = B2_BASE_BODY
+
+
+@configclass
+class B2ProprioLidarObservationsCfg(TeacherObservationsCfg):
+    def __post_init__(self):
+        self.policy.extreme_parkour_observations.func = observations.ProprioLidarParkourObservations
         self.policy.extreme_parkour_observations.params["base_body_name"] = B2_BASE_BODY
 
 

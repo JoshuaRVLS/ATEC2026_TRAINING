@@ -2,6 +2,7 @@ from rsl_rl.env import VecEnv
 from parkour_isaaclab.envs import ParkourManagerBasedRLEnv
 import gymnasium as gym
 import torch
+from tensordict import TensorDict
 
 class ParkourRslRlVecEnvWrapper(VecEnv):
     def __init__(self, env: ParkourManagerBasedRLEnv, clip_actions: float | None = None):
@@ -13,6 +14,7 @@ class ParkourRslRlVecEnvWrapper(VecEnv):
         # initialize the wrapper
         self.env = env
         self.clip_actions = clip_actions
+        self.return_tensordict = False
 
         # store information required by wrapper
         self.num_envs = self.unwrapped.num_envs
@@ -101,6 +103,8 @@ class ParkourRslRlVecEnvWrapper(VecEnv):
             obs_dict = self.unwrapped.observation_manager.compute()
         else:
             obs_dict = self.unwrapped._get_observations()
+        if self.return_tensordict:
+            return self._to_tensordict(obs_dict), {"observations": obs_dict}
         return obs_dict["policy"], {"observations": obs_dict}
 
     @property
@@ -128,6 +132,8 @@ class ParkourRslRlVecEnvWrapper(VecEnv):
         # reset the environment
         obs_dict, _ = self.env.reset()
         # return observations
+        if self.return_tensordict:
+            return self._to_tensordict(obs_dict), {"observations": obs_dict}
         return obs_dict["policy"], {"observations": obs_dict}
 
     def step(self, actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
@@ -139,7 +145,7 @@ class ParkourRslRlVecEnvWrapper(VecEnv):
         # compute dones for compatibility with RSL-RL
         dones = (terminated | truncated).to(dtype=torch.long)
         # move extra observations to the extras dict
-        obs = obs_dict["policy"]
+        obs = self._to_tensordict(obs_dict) if self.return_tensordict else obs_dict["policy"]
         extras["observations"] = obs_dict
         # move time out information to the extras dict
         # this is only needed for infinite horizon tasks
@@ -169,3 +175,8 @@ class ParkourRslRlVecEnvWrapper(VecEnv):
         self.env.unwrapped.action_space = gym.vector.utils.batch_space(
             self.env.unwrapped.single_action_space, self.num_envs
         )
+
+    def _to_tensordict(self, obs_dict: dict[str, torch.Tensor]) -> TensorDict:
+        obs = {"policy": obs_dict["policy"]}
+        obs["critic"] = obs_dict.get("critic", obs_dict["policy"])
+        return TensorDict(obs, batch_size=[self.num_envs], device=self.device)

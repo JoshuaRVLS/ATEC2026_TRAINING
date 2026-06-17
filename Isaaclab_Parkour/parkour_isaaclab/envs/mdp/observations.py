@@ -140,6 +140,67 @@ class ExtremeParkourObservations(ManagerTermBase):
     def _get_heights(self):
         return torch.clip(self.ray_sensor.data.pos_w[:, 2].unsqueeze(1) - self.ray_sensor.data.ray_hits_w[..., 2] - 0.3, -1, 1).to(self.device)
 
+
+class ProprioLidarParkourObservations(ExtremeParkourObservations):
+    """Deployable Parkour observations built only from proprioception and terrain ray scans."""
+
+    def __init__(self, cfg: ObservationTermCfg, env: ParkourManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self.measured_heights = torch.zeros(self.num_envs, self.ray_sensor.num_rays, device=self.device)
+
+    def __call__(
+        self,
+        env: ParkourManagerBasedRLEnv,
+        asset_cfg: SceneEntityCfg,
+        sensor_cfg: SceneEntityCfg,
+        parkour_name: str,
+        history_length: int,
+        base_body_name: str = "base",
+    ) -> torch.Tensor:
+        terrain_names = self.parkour_event.env_per_terrain_name
+        env_idx_tensor = torch.tensor((terrain_names != "parkour_flat")).to(dtype=torch.bool, device=self.device)
+        invert_env_idx_tensor = torch.tensor((terrain_names == "parkour_flat")).to(dtype=torch.bool, device=self.device)
+        roll, pitch, yaw = euler_xyz_from_quat(self.asset.data.root_quat_w)
+        imu_obs = torch.stack((wrap_to_pi(roll), wrap_to_pi(pitch)), dim=1).to(self.device)
+        if env.common_step_counter % 5 == 0:
+            self.delta_yaw = self.parkour_event.target_yaw - wrap_to_pi(yaw)
+            self.delta_next_yaw = self.parkour_event.next_target_yaw - wrap_to_pi(yaw)
+            self.measured_heights = self._get_heights()
+        commands = env.command_manager.get_command("base_velocity")
+        obs_buf = torch.cat(
+            (
+                self.asset.data.root_ang_vel_b * 0.25,
+                imu_obs,
+                0 * self.delta_yaw[:, None],
+                self.delta_yaw[:, None],
+                self.delta_next_yaw[:, None],
+                0 * commands[:, 0:2],
+                commands[:, 0:1],
+                env_idx_tensor,
+                invert_env_idx_tensor,
+                self.asset.data.joint_pos - self.asset.data.default_joint_pos,
+                self.asset.data.joint_vel * 0.05,
+                env.action_manager.get_term("joint_pos").action_history_buf[:, -1],
+                self._get_contact_fill(),
+            ),
+            dim=-1,
+        )
+        observations = torch.cat(
+            [
+                obs_buf,
+                self.measured_heights,
+                self._obs_history_buffer.view(self.num_envs, -1),
+            ],
+            dim=-1,
+        )
+        obs_buf[:, 6:8] = 0
+        self._obs_history_buffer = torch.where(
+            (env.episode_length_buf <= 1)[:, None, None],
+            torch.stack([obs_buf] * self.history_length, dim=1),
+            torch.cat([self._obs_history_buffer[:, 1:], obs_buf.unsqueeze(1)], dim=1),
+        )
+        return observations
+
 class image_features(ManagerTermBase):
     
     def __init__(self, cfg: ObservationTermCfg, env: ParkourManagerBasedRLEnv):

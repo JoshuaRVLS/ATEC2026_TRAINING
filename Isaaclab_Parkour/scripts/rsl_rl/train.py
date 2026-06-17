@@ -81,6 +81,7 @@ import warnings
 from datetime import datetime
 
 from scripts.rsl_rl.modules.on_policy_runner_with_extractor import OnPolicyRunnerWithExtractor
+from rsl_rl.runners import OnPolicyRunner
 
 from isaaclab.envs import (
     DirectMARLEnv,
@@ -188,7 +189,11 @@ def main(env_cfg: ParkourManagerBasedRLEnv |ManagerBasedRLEnvCfg | DirectRLEnvCf
     # wrap around environment for rsl-rl
     env = ParkourRslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
     # # create runner from rsl-rl
-    runner = OnPolicyRunnerWithExtractor(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    if agent_cfg.algorithm.class_name in ["PPOWithExtractor", "DistillationWithExtractor"]:
+        runner = OnPolicyRunnerWithExtractor(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    else:
+        env.return_tensordict = True
+        runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     # # write git state to logs
     runner.add_git_repo_to_log(__file__)
     # load the checkpoint
