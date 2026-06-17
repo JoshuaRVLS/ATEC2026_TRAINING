@@ -33,7 +33,10 @@ def terminate_episode(
     pitch_cutoff = torch.abs(wrap_to_pi(pitch)) > 1.5
     time_out_buf = env.episode_length_buf >= env.max_episode_length
     parkour_event: ParkourEvent =  env.parkour_manager.get_term('base_parkour')    
-    reach_goal_cutoff = parkour_event.cur_goal_idx >= env.scene.terrain.cfg.terrain_generator.num_goals
+    if hasattr(parkour_event, "_sanitize_indices"):
+        parkour_event._sanitize_indices()
+    last_real_goal_idx = parkour_event.env_goals.shape[1] - parkour_event.num_future_goal_obs - 1
+    reach_goal_cutoff = parkour_event.cur_goal_idx >= last_real_goal_idx
     height_cutoff = asset.data.root_state_w[:, 2] < -0.25
     time_out_buf |= reach_goal_cutoff
     reset_buf |= time_out_buf
@@ -46,8 +49,11 @@ def parkour_time_out_or_goal(
     env: ParkourManagerBasedRLEnv,
 ):
     parkour_event: ParkourEvent = env.parkour_manager.get_term("base_parkour")
+    if hasattr(parkour_event, "_sanitize_indices"):
+        parkour_event._sanitize_indices()
     time_out = env.episode_length_buf >= env.max_episode_length
-    goal_done = parkour_event.cur_goal_idx >= env.scene.terrain.cfg.terrain_generator.num_goals
+    last_real_goal_idx = parkour_event.env_goals.shape[1] - parkour_event.num_future_goal_obs - 1
+    goal_done = parkour_event.cur_goal_idx >= last_real_goal_idx
     return time_out | goal_done
 
 def parkour_fall_or_bad_orientation(

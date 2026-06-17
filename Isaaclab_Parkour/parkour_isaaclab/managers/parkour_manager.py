@@ -28,7 +28,7 @@ def sanitize_env_ids(env_ids: Sequence[int] | slice | None, num_envs: int, devic
         valid_env_ids = torch.as_tensor(env_ids, device=device, dtype=torch.long).flatten()
     if valid_env_ids.numel() == 0:
         return valid_env_ids
-    return valid_env_ids[(valid_env_ids >= 0) & (valid_env_ids < num_envs)]
+    return valid_env_ids.clamp_(0, num_envs - 1)
 
 
 class ParkourTerm(CommandTerm):
