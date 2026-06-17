@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import inspect
 import statistics
 import time
 import torch
@@ -133,8 +132,7 @@ class OnPolicyRunnerWithExtractor(OnPolicyRunner):
             self.obs_normalizer = torch.nn.Identity().to(self.device)  # no normalization
             self.privileged_obs_normalizer = torch.nn.Identity().to(self.device)  # no normalization
         if self.depth_encoder_cfg is None:
-            init_storage_params = inspect.signature(self.alg.init_storage).parameters
-            if "training_type" in init_storage_params:
+            try:
                 self.alg.init_storage(
                     self.training_type,
                     self.env.num_envs,
@@ -143,7 +141,9 @@ class OnPolicyRunnerWithExtractor(OnPolicyRunner):
                     [num_privileged_obs],
                     [self.env.num_actions],
                 )
-            else:
+            except TypeError as exc:
+                if "positional argument" not in str(exc) and "positional arguments" not in str(exc):
+                    raise
                 self.alg.init_storage(
                     self.env.num_envs,
                     self.num_steps_per_env,
