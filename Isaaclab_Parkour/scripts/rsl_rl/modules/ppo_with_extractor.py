@@ -93,16 +93,24 @@ class PPOWithExtractor(PPO):
         self.transition.action_mean = self.policy.action_mean.detach()
         self.transition.action_sigma = self.policy.action_std.detach()
         # need to record obs and critic_obs before env.step()
-        if isinstance(getattr(self.storage, "observations", None), TensorDict):
-            self.transition.observations = TensorDict({"policy": obs}, batch_size=[obs.shape[0]])
-            self.transition.privileged_observations = TensorDict(
-                {"critic": critic_obs}, batch_size=[critic_obs.shape[0]]
-            )
-        else:
-            self.transition.observations = obs
-            self.transition.privileged_observations = critic_obs
+        self.transition.observations = TensorDict(
+            {"policy": obs, "critic": critic_obs},
+            batch_size=[obs.shape[0]],
+            device=obs.device,
+        )
 
         return self.transition.actions
+
+    def compute_returns(self, critic_obs):
+        if isinstance(critic_obs, TensorDict):
+            critic_obs = critic_obs["critic"]
+        last_values = self.policy.evaluate(critic_obs).detach()
+        self.storage.compute_returns(
+            last_values,
+            self.gamma,
+            self.lam,
+            normalize_advantage=not self.normalize_advantage_per_mini_batch,
+        )
     
 
     def update(self):  # noqa: C901
@@ -129,24 +137,42 @@ class PPOWithExtractor(PPO):
             generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
 
         # iterate over batches
-        for (
-            obs_batch,
-            critic_obs_batch,
-            actions_batch,
-            target_values_batch,
-            advantages_batch,
-            returns_batch,
-            old_actions_log_prob_batch,
-            old_mu_batch,
-            old_sigma_batch,
-            hid_states_batch,
-            masks_batch,
-            rnd_state_batch,
-        ) in generator:
-            if isinstance(obs_batch, TensorDict):
-                obs_batch = obs_batch["policy"]
-            if isinstance(critic_obs_batch, TensorDict):
-                critic_obs_batch = critic_obs_batch["critic"]
+        for batch in generator:
+            if len(batch) == 10:
+                (
+                    obs_batch_td,
+                    actions_batch,
+                    target_values_batch,
+                    advantages_batch,
+                    returns_batch,
+                    old_actions_log_prob_batch,
+                    old_mu_batch,
+                    old_sigma_batch,
+                    hid_states_batch,
+                    masks_batch,
+                ) = batch
+                obs_batch = obs_batch_td["policy"]
+                critic_obs_batch = obs_batch_td["critic"]
+                rnd_state_batch = None
+            else:
+                (
+                    obs_batch,
+                    critic_obs_batch,
+                    actions_batch,
+                    target_values_batch,
+                    advantages_batch,
+                    returns_batch,
+                    old_actions_log_prob_batch,
+                    old_mu_batch,
+                    old_sigma_batch,
+                    hid_states_batch,
+                    masks_batch,
+                    rnd_state_batch,
+                ) = batch
+                if isinstance(obs_batch, TensorDict):
+                    obs_batch = obs_batch["policy"]
+                if isinstance(critic_obs_batch, TensorDict):
+                    critic_obs_batch = critic_obs_batch["critic"]
 
             # number of augmentations per sample
             # we start with 1 and increase it if we use symmetry augmentation
