@@ -277,6 +277,11 @@ class ParkourManagerBasedRLEnv(ParkourManagerBasedEnv, gym.Env):
         # -- curriculum manager
         info = self.curriculum_manager.reset(env_ids)
         self.extras["log"].update(info)
+        # Parkour curriculum can update terrain/goal indices during reset. Clamp
+        # them before IsaacLab command metrics index per-env tensors on CUDA.
+        for term in self.parkour_manager._terms.values():
+            if hasattr(term, "_sanitize_indices"):
+                term._sanitize_indices()
         # -- command manager
         info = self.command_manager.reset(env_ids)
         self.extras["log"].update(info)
