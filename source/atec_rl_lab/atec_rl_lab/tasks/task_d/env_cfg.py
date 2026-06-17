@@ -241,13 +241,23 @@ class TaskDB2PiperLidarTeacherEnvCfg(TaskDEnvB2Cfg):
     def __post_init__(self):
         super().__post_init__()
 
+        leg_joint_names = [
+            "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+            "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+            "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+            "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+        ]
+
         self.observations.policy = None
         self.observations.image = None
+        self.observations.proprio.joint_pos.params["asset_cfg"].joint_names = leg_joint_names
+        self.observations.proprio.joint_vel.params["asset_cfg"].joint_names = leg_joint_names
         self.commands.base_velocity.heading_command = False
         self.commands.base_velocity.rel_heading_envs = 0.0
         self.commands.base_velocity.ranges.lin_vel_x = (0.1, 0.3)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
+        self.actions.joint_pos.joint_names = leg_joint_names
         self.actions.joint_pos.scale = 0.25
         self.events.reset_robot_joints = None
         self.episode_length_s = 20.0
