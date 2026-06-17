@@ -19,20 +19,37 @@ Parkour Manager is dealing with goal heading position
 It is similar to a CommandMangner which is a handling Position Command
 """
 
+def sanitize_env_ids(env_ids: Sequence[int] | slice | None, num_envs: int, device: str | torch.device) -> torch.Tensor:
+    if env_ids is None or isinstance(env_ids, slice):
+        return torch.arange(num_envs, device=device, dtype=torch.long)
+    if isinstance(env_ids, torch.Tensor):
+        valid_env_ids = env_ids.to(device=device, dtype=torch.long).flatten()
+    else:
+        valid_env_ids = torch.as_tensor(env_ids, device=device, dtype=torch.long).flatten()
+    if valid_env_ids.numel() == 0:
+        return valid_env_ids
+    return valid_env_ids[(valid_env_ids >= 0) & (valid_env_ids < num_envs)]
+
+
 class ParkourTerm(CommandTerm):
     def __init__(self, cfg: ParkourTermCfg, env: ParkourManagerBasedRLEnv):
         super().__init__(cfg, env) 
 
     def reset(self, env_ids: Sequence[int] | None = None) -> dict[str, float]:
-        if env_ids is None:
-            env_ids = slice(None)
+        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
+        if hasattr(self, "_sanitize_indices"):
+            self._sanitize_indices()
 
         extras = {}
         for metric_name, metric_value in self.metrics.items():
-            extras[metric_name] = torch.mean(metric_value).item()
-            metric_value[env_ids] = 0.0
+            extras[metric_name] = torch.mean(metric_value.float()).item()
+            if metric_value.ndim > 0 and metric_value.shape[0] == self.num_envs and env_ids.numel() > 0:
+                metric_env_ids = env_ids.to(device=metric_value.device)
+                metric_value[metric_env_ids] = 0.0
 
         self._resample(env_ids)
+        if hasattr(self, "_sanitize_indices"):
+            self._sanitize_indices()
 
         return extras
     
@@ -103,4 +120,3 @@ class ParkourManager(CommandManager):
                 raise TypeError(f"Returned object for the term '{term_name}' is not of type ParkourType.")
             # add class to dict
             self._terms[term_name] = term
-

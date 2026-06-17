@@ -18,6 +18,7 @@ from typing import Any, ClassVar
 import math, torch   
 import numpy as np 
 from parkour_isaaclab.managers.parkour_reward_manager import ParkourRewardManager
+from parkour_isaaclab.managers.parkour_manager import sanitize_env_ids
 
 class ParkourManagerBasedRLEnv(ParkourManagerBasedEnv, gym.Env):
     is_vector_env: ClassVar[bool] = True 
@@ -121,11 +122,16 @@ class ParkourManagerBasedRLEnv(ParkourManagerBasedEnv, gym.Env):
         self.common_step_counter += 1  # total step (common for all envs)
         # -- check terminations
         self.reset_buf = self.termination_manager.compute()
+        if self.reset_buf.shape != (self.num_envs,):
+            raise RuntimeError(
+                f"Termination manager returned reset buffer with shape {tuple(self.reset_buf.shape)}; "
+                f"expected ({self.num_envs},)."
+            )
         self.reset_terminated = self.termination_manager.terminated
         self.reset_time_outs = self.termination_manager.time_outs
 
         # -- reward computation
-        reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+        reset_env_ids = sanitize_env_ids(self.reset_buf.nonzero(as_tuple=False).squeeze(-1), self.num_envs, self.device)
         self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
         
         if len(self.recorder_manager.active_terms) > 0:
@@ -249,6 +255,9 @@ class ParkourManagerBasedRLEnv(ParkourManagerBasedEnv, gym.Env):
         Args:
             env_ids: List of environment ids which must be reset
         """
+        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
+        if env_ids.numel() == 0:
+            return
         # update the curriculum for environments that need a reset
         self.curriculum_manager.compute(env_ids=env_ids)
         # reset the internal buffers of the scene elements

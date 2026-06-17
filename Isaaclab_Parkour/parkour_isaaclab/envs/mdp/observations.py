@@ -17,6 +17,7 @@ from isaaclab.sensors import ContactSensor, RayCaster, RayCasterCamera
 from isaaclab.assets import Articulation
 from isaaclab.utils.math  import euler_xyz_from_quat, wrap_to_pi
 from parkour_isaaclab.envs.mdp.parkours import ParkourEvent 
+from parkour_isaaclab.managers.parkour_manager import sanitize_env_ids
 from collections.abc import Sequence
 import numpy as np 
 import cv2
@@ -45,6 +46,9 @@ class ExtremeParkourObservations(ManagerTermBase):
         self.body_id = self.asset.find_bodies(self.base_body_name)[0]
         
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
+        if env_ids.numel() == 0:
+            return
         self._obs_history_buffer[env_ids, :, :] = 0. 
 
     def __call__(
@@ -219,8 +223,9 @@ class image_features(ManagerTermBase):
                                         resized[1]).to(self.device)
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
-        if env_ids is None:
-            env_ids = torch.arange(0, self.num_envs)
+        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
+        if env_ids.numel() == 0:
+            return
         depth_images = self.camera_sensor.data.output["distance_to_camera"].squeeze(-1)[env_ids]
         for depth_image, env_id in zip(depth_images, env_ids):
             processed_image = self._process_depth_image(depth_image)

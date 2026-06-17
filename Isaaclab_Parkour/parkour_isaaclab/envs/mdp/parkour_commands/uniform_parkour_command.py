@@ -11,6 +11,7 @@ import isaaclab.utils.math as math_utils
 from isaaclab.assets import Articulation
 from isaaclab.managers import CommandTerm 
 from isaaclab.markers import VisualizationMarkers
+from parkour_isaaclab.managers.parkour_manager import sanitize_env_ids
 
 if TYPE_CHECKING:
     from parkour_isaaclab.envs import ParkourManagerBasedEnv
@@ -26,6 +27,17 @@ class UniformParkourCommand(CommandTerm):
         self.heading_target = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_vel_xy"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_vel_yaw"] = torch.zeros(self.num_envs, device=self.device)
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> dict[str, float]:
+        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
+        extras = {}
+        for metric_name, metric_value in self.metrics.items():
+            extras[metric_name] = torch.mean(metric_value.float()).item()
+            if metric_value.ndim > 0 and metric_value.shape[0] == self.num_envs and env_ids.numel() > 0:
+                metric_value[env_ids.to(device=metric_value.device)] = 0.0
+        if env_ids.numel() > 0:
+            self._resample_command(env_ids)
+        return extras
 
     def __str__(self) -> str:
         """Return a string representation of the command generator."""
@@ -118,4 +130,3 @@ class UniformParkourCommand(CommandTerm):
         arrow_quat = math_utils.quat_mul(base_quat_w, arrow_quat)
 
         return arrow_scale, arrow_quat
-

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import omni.log
 from isaaclab.envs.mdp.actions.joint_actions import JointPositionAction
+from parkour_isaaclab.managers.parkour_manager import sanitize_env_ids
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv
@@ -55,6 +56,9 @@ class DelayedJointPositionAction(JointPositionAction):
         # clip actions
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
+        if env_ids.numel() == 0:
+            return
         self._raw_actions[env_ids] = 0.0
         self._action_history_buf[env_ids, :, :] = 0.
 
