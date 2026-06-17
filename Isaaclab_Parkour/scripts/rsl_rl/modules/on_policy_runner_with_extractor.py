@@ -236,7 +236,8 @@ class OnPolicyRunnerWithExtractor(OnPolicyRunner):
                         privileged_obs = obs
 
                     # process the step
-                    self.alg.process_env_step(rewards, dones, infos)
+                    time_outs = infos.get("time_outs", infos.get("time_out", torch.zeros_like(dones))).to(self.device)
+                    self.alg.process_env_step(rewards, dones, time_outs, infos)
 
                     # Extract intrinsic rewards (only for logging)
                     intrinsic_rewards = self.alg.intrinsic_rewards if self.alg.rnd else None
