@@ -96,6 +96,11 @@ class ParkourEvent(ParkourTerm):
     def _gather_cur_goals(self, future=0):
         return self.env_goals.gather(1, (self.cur_goal_idx[:, None, None]+future).expand(-1, -1, self.env_goals.shape[-1])).squeeze(1)
 
+    def _safe_terrain_indices(self):
+        safe_levels = self.terrain.terrain_levels.clamp(0, self.terrain_goals.shape[0] - 1)
+        safe_types = self.terrain.terrain_types.clamp(0, self.terrain_goals.shape[1] - 1)
+        return safe_levels, safe_types
+
     def __str__(self) -> str:
         msg = "ParkourCommand:\n"
         msg += f"\tCommand dimension: {tuple(self.command.shape[1:])}\n"
@@ -152,15 +157,21 @@ class ParkourEvent(ParkourTerm):
         move_down = self.dis_to_start_pos < move_down_distance
 
         robot_root_pos_w = self.robot.data.root_pos_w[:, :2] - self.env_origins[:, :2]
-        self.terrain.terrain_levels[env_ids] += 1 * move_up - 1 * move_down
-        # # Robots that solve the last level are sent to a random one
-        self.terrain.terrain_levels[env_ids] = torch.where(self.terrain.terrain_levels[env_ids]>=self.terrain.max_terrain_level,
-                                                   torch.randint_like(self.terrain.terrain_levels[env_ids], self.terrain.max_terrain_level),
-                                                   torch.clip(self.terrain.terrain_levels[env_ids], 0)) # (the minumum level is zero)
-        self.env_origins[env_ids] = self.terrain.terrain_origins[self.terrain.terrain_levels[env_ids], self.terrain.terrain_types[env_ids]]
-        self.env_class[env_ids] = self.terrain_class[self.terrain.terrain_levels[env_ids], self.terrain.terrain_types[env_ids]]
+        level_delta = move_up.to(self.terrain.terrain_levels.dtype) - move_down.to(self.terrain.terrain_levels.dtype)
+        new_levels = self.terrain.terrain_levels[env_ids] + level_delta
+        max_level = self.terrain.max_terrain_level
+        solved_last_level = new_levels >= max_level
+        random_levels = torch.randint_like(new_levels, max_level)
+        new_levels = torch.where(solved_last_level, random_levels, new_levels)
+        new_levels = torch.clamp(new_levels, min=0, max=max_level - 1)
+        self.terrain.terrain_levels[env_ids] = new_levels
+        safe_levels = self.terrain.terrain_levels[env_ids].clamp(0, max_level - 1)
+        safe_types = self.terrain.terrain_types[env_ids].clamp(0, self.terrain.terrain_origins.shape[1] - 1)
+        self.env_origins[env_ids] = self.terrain.terrain_origins[safe_levels, safe_types]
+        self.env_class[env_ids] = self.terrain_class[safe_levels, safe_types]
         
-        temp = self.terrain_goals[self.terrain.terrain_levels, self.terrain.terrain_types]
+        safe_all_levels, safe_all_types = self._safe_terrain_indices()
+        temp = self.terrain_goals[safe_all_levels, safe_all_types]
         last_col = temp[:, -1].unsqueeze(1)
         self.env_goals[:] = torch.cat((temp, last_col.repeat(1, self.cfg.num_future_goal_obs, 1)), dim=1)[:]
         self.cur_goals = self._gather_cur_goals()
@@ -176,8 +187,8 @@ class ParkourEvent(ParkourTerm):
         target_vec_norm = self.next_target_pos_rel / (norm + 1e-5)
         self.next_target_yaw = torch.atan2(target_vec_norm[:, 1], target_vec_norm[:, 0])
 
-        numpy_terrain_levels = self.terrain.terrain_levels.detach().cpu().numpy()
-        numpy_terrain_types = self.terrain.terrain_types.detach().cpu().numpy()
+        numpy_terrain_levels = safe_all_levels.detach().cpu().numpy()
+        numpy_terrain_types = safe_all_types.detach().cpu().numpy()
         self.env_per_terrain_name = self.total_terrain_names[numpy_terrain_levels, numpy_terrain_types]
 
         self.reach_goal_timer[env_ids] = 0
@@ -186,7 +197,7 @@ class ParkourEvent(ParkourTerm):
         if self.debug_vis:
             self.future_goal_idx[env_ids, 0] = False
             self.future_goal_idx[env_ids, 1:] = True
-            self.env_per_heights = self.total_heights[self.terrain.terrain_levels, self.terrain.terrain_types]
+            self.env_per_heights = self.total_heights[safe_all_levels, safe_all_types]
 
     def _update_metrics(self):
         # logs data
