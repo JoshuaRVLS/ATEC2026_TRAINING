@@ -137,8 +137,8 @@ class OnPolicyRunnerWithExtractor(OnPolicyRunner):
                 num_envs=self.env.num_envs,
                 num_transitions_per_env=self.num_steps_per_env,
                 obs={
-                    "policy": torch.zeros(num_obs, device=self.device),
-                    "critic": torch.zeros(num_privileged_obs, device=self.device),
+                    "policy": torch.zeros(self.env.num_envs, num_obs, device=self.device),
+                    "critic": torch.zeros(self.env.num_envs, num_privileged_obs, device=self.device),
                 },
                 actions_shape=[self.env.num_actions],
             )
