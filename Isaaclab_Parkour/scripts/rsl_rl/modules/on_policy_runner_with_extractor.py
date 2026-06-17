@@ -132,25 +132,13 @@ class OnPolicyRunnerWithExtractor(OnPolicyRunner):
             self.obs_normalizer = torch.nn.Identity().to(self.device)  # no normalization
             self.privileged_obs_normalizer = torch.nn.Identity().to(self.device)  # no normalization
         if self.depth_encoder_cfg is None:
-            try:
-                self.alg.init_storage(
-                    self.training_type,
-                    self.env.num_envs,
-                    self.num_steps_per_env,
-                    [num_obs],
-                    [num_privileged_obs],
-                    [self.env.num_actions],
-                )
-            except TypeError as exc:
-                if "positional argument" not in str(exc) and "positional arguments" not in str(exc):
-                    raise
-                self.alg.init_storage(
-                    self.env.num_envs,
-                    self.num_steps_per_env,
-                    {"policy": [num_obs], "critic": [num_privileged_obs]},
-                    [self.env.num_actions],
-                    [self.env.num_actions],
-                )
+            self.alg.init_storage(
+                self.env.num_envs,
+                self.num_steps_per_env,
+                {"policy": [num_obs], "critic": [num_privileged_obs]},
+                [self.env.num_actions],
+                [self.env.num_actions],
+            )
 
         self.disable_logs = self.is_distributed and self.gpu_global_rank != 0
         # Logging
