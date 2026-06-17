@@ -94,7 +94,8 @@ class ParkourEvent(ParkourTerm):
         self.next_goals = self._gather_cur_goals(future=1)
 
     def _gather_cur_goals(self, future=0):
-        return self.env_goals.gather(1, (self.cur_goal_idx[:, None, None]+future).expand(-1, -1, self.env_goals.shape[-1])).squeeze(1)
+        goal_idx = torch.clamp(self.cur_goal_idx + future, 0, self.env_goals.shape[1] - 1)
+        return self.env_goals.gather(1, goal_idx[:, None, None].expand(-1, -1, self.env_goals.shape[-1])).squeeze(1)
 
     def _safe_terrain_indices(self):
         safe_levels = self.terrain.terrain_levels.clamp(0, self.terrain_goals.shape[0] - 1)
@@ -112,8 +113,10 @@ class ParkourEvent(ParkourTerm):
         if self.debug_vis:
             tmp_mask = torch.nonzero(self.cur_goal_idx>0).squeeze(-1)
             if tmp_mask.numel() > 0:
-                self.future_goal_idx[tmp_mask, self.cur_goal_idx[tmp_mask]] = False
+                safe_vis_goal_idx = torch.clamp(self.cur_goal_idx[tmp_mask], 0, self.future_goal_idx.shape[1] - 1)
+                self.future_goal_idx[tmp_mask, safe_vis_goal_idx] = False
         self.cur_goal_idx[next_flag] += 1
+        self.cur_goal_idx[:] = torch.clamp(self.cur_goal_idx, 0, self.env_goals.shape[1] - 1)
         self.reach_goal_timer[next_flag] = 0
         robot_root_pos_w = self.robot.data.root_pos_w[:, :2] - self.env_origins[:, :2]
         self.reached_goal_ids = torch.norm(robot_root_pos_w - self.cur_goals[:, :2], dim=1) < self.next_goal_threshold
