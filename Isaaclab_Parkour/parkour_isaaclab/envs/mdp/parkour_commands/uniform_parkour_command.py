@@ -32,9 +32,8 @@ class UniformParkourCommand(CommandTerm):
         env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
         extras = {}
         for metric_name, metric_value in self.metrics.items():
-            extras[metric_name] = torch.mean(metric_value.float()).item()
-            if metric_value.ndim > 0 and metric_value.shape[0] == self.num_envs and env_ids.numel() > 0:
-                metric_value[env_ids.to(device=metric_value.device)] = 0.0
+            extras[metric_name] = 0.0
+            metric_value.zero_()
         if env_ids.numel() > 0:
             self._resample_command(env_ids)
         return extras

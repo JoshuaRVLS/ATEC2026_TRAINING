@@ -42,10 +42,8 @@ class ParkourTerm(CommandTerm):
 
         extras = {}
         for metric_name, metric_value in self.metrics.items():
-            extras[metric_name] = torch.mean(metric_value.float()).item()
-            if metric_value.ndim > 0 and metric_value.shape[0] == self.num_envs and env_ids.numel() > 0:
-                metric_env_ids = env_ids.to(device=metric_value.device)
-                metric_value[metric_env_ids] = 0.0
+            extras[metric_name] = 0.0
+            metric_value.zero_()
 
         self._resample(env_ids)
         if hasattr(self, "_sanitize_indices"):
