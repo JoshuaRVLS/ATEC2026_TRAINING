@@ -15,7 +15,12 @@ except ImportError:
     try:
         from rsl_rl.modules.normalizer import EmpiricalNormalization
     except ImportError:
-        from rsl_rl.utils import EmpiricalNormalization
+        try:
+            from rsl_rl.utils import EmpiricalNormalization
+        except ImportError:
+            class EmpiricalNormalization(torch.nn.Identity):
+                def __init__(self, shape, until=None):
+                    super().__init__()
 from .actor_critic_with_encoder import ActorCriticRMA
 from rsl_rl.utils import store_code_state
 from rsl_rl.runners.on_policy_runner import OnPolicyRunner
