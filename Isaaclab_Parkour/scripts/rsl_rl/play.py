@@ -174,7 +174,11 @@ def main():
         num_scan = estimator_paras["num_scan"]
         num_priv_explicit = estimator_paras["num_priv_explicit"]
     # reset environment
-    obs, extras = env.get_observations()
+    observations = env.get_observations()
+    if isinstance(observations, tuple):
+        obs, extras = observations
+    else:
+        obs, extras = observations, {"observations": observations}
     timestep = 0
     # simulate environment
     while simulation_app.is_running():

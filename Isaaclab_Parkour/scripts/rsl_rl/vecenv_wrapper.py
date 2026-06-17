@@ -104,7 +104,7 @@ class ParkourRslRlVecEnvWrapper(VecEnv):
         else:
             obs_dict = self.unwrapped._get_observations()
         if self.return_tensordict:
-            return self._to_tensordict(obs_dict), {"observations": obs_dict}
+            return self._to_tensordict(obs_dict)
         return obs_dict["policy"], {"observations": obs_dict}
 
     @property
@@ -133,7 +133,7 @@ class ParkourRslRlVecEnvWrapper(VecEnv):
         obs_dict, _ = self.env.reset()
         # return observations
         if self.return_tensordict:
-            return self._to_tensordict(obs_dict), {"observations": obs_dict}
+            return self._to_tensordict(obs_dict)
         return obs_dict["policy"], {"observations": obs_dict}
 
     def step(self, actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
