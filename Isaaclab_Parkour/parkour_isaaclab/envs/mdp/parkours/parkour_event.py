@@ -30,6 +30,9 @@ class ParkourEvent(ParkourTerm):
         self.reach_goal_delay = cfg.reach_goal_delay
         self.num_future_goal_obs = cfg.num_future_goal_obs
         self.next_goal_threshold = cfg.next_goal_threshold
+        self.curriculum_move_up_scale = cfg.curriculum_move_up_scale
+        self.curriculum_move_down_scale = cfg.curriculum_move_down_scale
+        self.curriculum_min_up_distance = cfg.curriculum_min_up_distance
         self.simulation_time = env.step_dt
         self.arrow_num = cfg.arrow_num
         self.env = env 
@@ -140,8 +143,13 @@ class ParkourEvent(ParkourTerm):
 
         self.dis_to_start_pos = torch.norm(start_pos - self.robot.data.root_pos_w[env_ids, :2], dim=1)
         threshold = self.env.command_manager.get_command("base_velocity")[env_ids, 0] * self.episode_length_s
-        move_up = self.dis_to_start_pos > 0.8*threshold
-        move_down = self.dis_to_start_pos < 0.4*threshold
+        move_up_distance = torch.maximum(
+            self.curriculum_move_up_scale * threshold,
+            torch.full_like(threshold, self.curriculum_min_up_distance),
+        )
+        move_down_distance = self.curriculum_move_down_scale * threshold
+        move_up = self.dis_to_start_pos > move_up_distance
+        move_down = self.dis_to_start_pos < move_down_distance
 
         robot_root_pos_w = self.robot.data.root_pos_w[:, :2] - self.env_origins[:, :2]
         self.terrain.terrain_levels[env_ids] += 1 * move_up - 1 * move_down

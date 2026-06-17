@@ -183,6 +183,80 @@ def reward_tracking_goal_vel(
     rew_move = torch.minimum(proj_vel, command_vel) / (command_vel + 1e-5)
     return rew_move
 
+def reward_tracking_goal_vel_positive(
+    env: ParkourManagerBasedRLEnv,
+    parkour_name: str,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    parkour_event: ParkourEvent = env.parkour_manager.get_term(parkour_name)
+    target_pos_rel = parkour_event.target_pos_rel
+    target_vel = target_pos_rel / (torch.norm(target_pos_rel, dim=-1, keepdim=True) + 1e-5)
+    proj_vel = torch.sum(target_vel * asset.data.root_vel_w[:, :2], dim=-1)
+    command_vel = env.command_manager.get_command("base_velocity")[:, 0]
+    return torch.clamp(proj_vel / (command_vel + 1e-5), min=0.0, max=1.5)
+
+class reward_progress_to_goal(ManagerTermBase):
+    def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self.parkour_event: ParkourEvent = env.parkour_manager.get_term(cfg.params["parkour_name"])
+        self.asset: Articulation = env.scene[cfg.params["asset_cfg"].name]
+        self.previous_distance = torch.zeros(env.num_envs, device=self.device)
+        self.reset()
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        if env_ids is None:
+            env_ids = torch.arange(self.num_envs, device=self.device)
+        robot_root_pos_w = self.asset.data.root_pos_w[env_ids, :2] - self.parkour_event.env_origins[env_ids, :2]
+        self.previous_distance[env_ids] = torch.norm(
+            self.parkour_event.cur_goals[env_ids, :2] - robot_root_pos_w, dim=-1
+        )
+
+    def __call__(
+        self,
+        env: ParkourManagerBasedRLEnv,
+        parkour_name: str,
+        asset_cfg: SceneEntityCfg,
+        clip: float = 0.25,
+    ) -> torch.Tensor:
+        robot_root_pos_w = self.asset.data.root_pos_w[:, :2] - self.parkour_event.env_origins[:, :2]
+        current_distance = torch.norm(self.parkour_event.cur_goals[:, :2] - robot_root_pos_w, dim=-1)
+        progress = torch.clamp(self.previous_distance - current_distance, min=-clip, max=clip)
+        self.previous_distance[:] = current_distance
+        return progress / env.step_dt
+
+class reward_progress_from_start(ManagerTermBase):
+    def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self.parkour_event: ParkourEvent = env.parkour_manager.get_term(cfg.params["parkour_name"])
+        self.previous_distance = torch.zeros(env.num_envs, device=self.device)
+        self.reset()
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        if env_ids is None:
+            env_ids = torch.arange(self.num_envs, device=self.device)
+        self.previous_distance[env_ids] = self.parkour_event.dis_to_start_pos[env_ids]
+
+    def __call__(
+        self,
+        env: ParkourManagerBasedRLEnv,
+        parkour_name: str,
+        clip: float = 0.25,
+    ) -> torch.Tensor:
+        current_distance = self.parkour_event.dis_to_start_pos
+        progress = torch.clamp(current_distance - self.previous_distance, min=-clip, max=clip)
+        self.previous_distance[:] = current_distance
+        return progress / env.step_dt
+
+def reward_goal_reached(
+    env: ParkourManagerBasedRLEnv,
+    parkour_name: str,
+) -> torch.Tensor:
+    parkour_event: ParkourEvent = env.parkour_manager.get_term(parkour_name)
+    if not hasattr(parkour_event, "reached_goal_ids"):
+        return torch.zeros(env.num_envs, device=env.device)
+    return parkour_event.reached_goal_ids.float()
+
 def reward_tracking_yaw(     
     env: ParkourManagerBasedRLEnv, 
     parkour_name : str, 
@@ -194,6 +268,21 @@ def reward_tracking_yaw(
     yaw = torch.atan2(2*(q[:,0]*q[:,3] + q[:,1]*q[:,2]),
                     1 - 2*(q[:,2]**2 + q[:,3]**2))
     return torch.exp(-torch.abs((parkour_event.target_yaw - yaw)))
+
+def reward_yaw_when_moving(
+    env: ParkourManagerBasedRLEnv,
+    parkour_name: str,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    parkour_event: ParkourEvent = env.parkour_manager.get_term(parkour_name)
+    asset: Articulation = env.scene[asset_cfg.name]
+    q = asset.data.root_quat_w
+    yaw = torch.atan2(2 * (q[:, 0] * q[:, 3] + q[:, 1] * q[:, 2]), 1 - 2 * (q[:, 2] ** 2 + q[:, 3] ** 2))
+    target_pos_rel = parkour_event.target_pos_rel
+    target_vel = target_pos_rel / (torch.norm(target_pos_rel, dim=-1, keepdim=True) + 1e-5)
+    proj_vel = torch.sum(target_vel * asset.data.root_vel_w[:, :2], dim=-1)
+    moving_scale = torch.clamp(proj_vel / 0.3, min=0.0, max=1.0)
+    return moving_scale * torch.exp(-torch.abs(parkour_event.target_yaw - yaw))
 
 class reward_delta_torques(ManagerTermBase):
     def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):

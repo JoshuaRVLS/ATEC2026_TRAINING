@@ -41,3 +41,25 @@ def terminate_episode(
     reset_buf |= pitch_cutoff
     reset_buf |= height_cutoff
     return reset_buf
+
+def parkour_time_out_or_goal(
+    env: ParkourManagerBasedRLEnv,
+):
+    parkour_event: ParkourEvent = env.parkour_manager.get_term("base_parkour")
+    time_out = env.episode_length_buf >= env.max_episode_length
+    goal_done = parkour_event.cur_goal_idx >= env.scene.terrain.cfg.terrain_generator.num_goals
+    return time_out | goal_done
+
+def parkour_fall_or_bad_orientation(
+    env: ParkourManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    max_roll: float = 1.5,
+    max_pitch: float = 1.5,
+    min_height: float = -0.25,
+):
+    asset: Articulation = env.scene[asset_cfg.name]
+    roll, pitch, _ = euler_xyz_from_quat(asset.data.root_state_w[:, 3:7])
+    roll_cutoff = torch.abs(wrap_to_pi(roll)) > max_roll
+    pitch_cutoff = torch.abs(wrap_to_pi(pitch)) > max_pitch
+    height_cutoff = asset.data.root_state_w[:, 2] < min_height
+    return roll_cutoff | pitch_cutoff | height_cutoff
