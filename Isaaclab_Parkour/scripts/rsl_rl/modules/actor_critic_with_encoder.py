@@ -189,6 +189,9 @@ class ActorCriticRMA(nn.Module):
     def reset(self, dones=None):
         pass
 
+    def update_normalization(self, observations, *args, **kwargs):
+        return
+
     def forward(self):
         raise NotImplementedError
 
