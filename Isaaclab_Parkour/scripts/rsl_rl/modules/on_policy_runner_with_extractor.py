@@ -147,8 +147,8 @@ class OnPolicyRunnerWithExtractor(OnPolicyRunner):
                 self.alg.init_storage(
                     self.env.num_envs,
                     self.num_steps_per_env,
-                    [num_obs],
-                    [num_privileged_obs],
+                    {"policy": [num_obs], "critic": [num_privileged_obs]},
+                    [self.env.num_actions],
                     [self.env.num_actions],
                 )
 

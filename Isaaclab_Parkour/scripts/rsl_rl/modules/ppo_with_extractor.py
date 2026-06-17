@@ -4,6 +4,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from tensordict import TensorDict
 
 from .actor_critic_with_encoder import ActorCriticRMA
 from rsl_rl.algorithms import PPO
@@ -92,8 +93,14 @@ class PPOWithExtractor(PPO):
         self.transition.action_mean = self.policy.action_mean.detach()
         self.transition.action_sigma = self.policy.action_std.detach()
         # need to record obs and critic_obs before env.step()
-        self.transition.observations = obs
-        self.transition.privileged_observations = critic_obs
+        if isinstance(getattr(self.storage, "observations", None), TensorDict):
+            self.transition.observations = TensorDict({"policy": obs}, batch_size=[obs.shape[0]])
+            self.transition.privileged_observations = TensorDict(
+                {"critic": critic_obs}, batch_size=[critic_obs.shape[0]]
+            )
+        else:
+            self.transition.observations = obs
+            self.transition.privileged_observations = critic_obs
 
         return self.transition.actions
     
@@ -136,6 +143,10 @@ class PPOWithExtractor(PPO):
             masks_batch,
             rnd_state_batch,
         ) in generator:
+            if isinstance(obs_batch, TensorDict):
+                obs_batch = obs_batch["policy"]
+            if isinstance(critic_obs_batch, TensorDict):
+                critic_obs_batch = critic_obs_batch["critic"]
 
             # number of augmentations per sample
             # we start with 1 and increase it if we use symmetry augmentation
