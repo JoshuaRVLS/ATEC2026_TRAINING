@@ -75,7 +75,9 @@ if args_cli.distributed and version.parse(installed_version) < version.parse(RSL
 
 import gymnasium as gym
 import os
+import pickle
 import torch
+import warnings
 from datetime import datetime
 
 from scripts.rsl_rl.modules.on_policy_runner_with_extractor import OnPolicyRunnerWithExtractor
@@ -88,7 +90,21 @@ from isaaclab.envs import (
     multi_agent_to_single_agent,
 )
 from isaaclab.utils.dict import print_dict
-from isaaclab.utils.io import dump_pickle, dump_yaml
+try:
+    from isaaclab.utils.io import dump_yaml
+except ImportError:
+    from isaaclab.utils.io.yaml import dump_yaml
+
+try:
+    from isaaclab.utils.io import dump_pickle
+except ImportError:
+    def dump_pickle(filename, obj):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        try:
+            with open(filename, "wb") as file:
+                pickle.dump(obj, file)
+        except Exception as exc:
+            warnings.warn(f"Could not save pickle config to {filename}: {exc}")
 from parkour_tasks.extreme_parkour_task.config.go2.agents.parkour_rl_cfg import ParkourRslRlOnPolicyRunnerCfg
 from scripts.rsl_rl.vecenv_wrapper import ParkourRslRlVecEnvWrapper
 # import isaaclab_tasks  # noqa: F401
