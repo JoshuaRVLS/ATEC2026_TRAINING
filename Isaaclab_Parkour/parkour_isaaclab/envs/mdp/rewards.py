@@ -7,7 +7,6 @@ from isaaclab.sensors import ContactSensor
 from isaaclab.assets import Articulation
 from isaaclab.utils.math  import euler_xyz_from_quat, wrap_to_pi, quat_apply
 from parkour_isaaclab.envs.mdp.parkours import ParkourEvent 
-from parkour_isaaclab.managers.parkour_manager import sanitize_env_ids
 from collections.abc import Sequence
 
 if TYPE_CHECKING:
@@ -102,11 +101,7 @@ class reward_action_rate(ManagerTermBase):
         self.previous_actions = torch.zeros(env.num_envs, 2,  asset.num_joints, dtype= torch.float ,device=self.device)
         
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
-        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
-        if env_ids.numel() == 0:
-            return
-        self.previous_actions[env_ids, 0,:] = 0.
-        self.previous_actions[env_ids, 1,:] = 0.
+        self.previous_actions.zero_()
 
     def __call__(
         self,
@@ -125,11 +120,7 @@ class reward_dof_acc(ManagerTermBase):
         self.dt = env.cfg.decimation * env.cfg.sim.dt
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
-        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
-        if env_ids.numel() == 0:
-            return
-        self.previous_joint_vel[env_ids, 0,:] = 0.
-        self.previous_joint_vel[env_ids, 1,:] = 0.
+        self.previous_joint_vel.zero_()
 
     def __call__(
         self,
@@ -212,13 +203,8 @@ class reward_progress_to_goal(ManagerTermBase):
         self.reset()
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
-        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
-        if env_ids.numel() == 0:
-            return
-        robot_root_pos_w = self.asset.data.root_pos_w[env_ids, :2] - self.parkour_event.env_origins[env_ids, :2]
-        self.previous_distance[env_ids] = torch.norm(
-            self.parkour_event.cur_goals[env_ids, :2] - robot_root_pos_w, dim=-1
-        )
+        robot_root_pos_w = self.asset.data.root_pos_w[:, :2] - self.parkour_event.env_origins[:, :2]
+        self.previous_distance[:] = torch.norm(self.parkour_event.cur_goals[:, :2] - robot_root_pos_w, dim=-1)
 
     def __call__(
         self,
@@ -241,10 +227,7 @@ class reward_progress_from_start(ManagerTermBase):
         self.reset()
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
-        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
-        if env_ids.numel() == 0:
-            return
-        self.previous_distance[env_ids] = self.parkour_event.dis_to_start_pos[env_ids]
+        self.previous_distance[:] = self.parkour_event.dis_to_start_pos
 
     def __call__(
         self,
@@ -300,11 +283,7 @@ class reward_delta_torques(ManagerTermBase):
         self.previous_torque = torch.zeros(env.num_envs, 2,  self.asset.num_joints, dtype= torch.float ,device=self.device)
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
-        env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
-        if env_ids.numel() == 0:
-            return
-        self.previous_torque[env_ids, 0,:] = 0.
-        self.previous_torque[env_ids, 1,:] = 0.
+        self.previous_torque.zero_()
 
     def __call__(
         self,
