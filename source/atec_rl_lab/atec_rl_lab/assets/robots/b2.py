@@ -86,6 +86,9 @@ UNITREE_B2_CFG = ATECArticulationCfg(
 UNITREE_B2_PIPER_CFG = deepcopy(UNITREE_B2_CFG)
 UNITREE_B2_PIPER_CFG.spawn.articulation_props.enabled_self_collisions = False
 UNITREE_B2_PIPER_CFG.spawn.usd_path = str(B2_PIPER_USD_PATH)
+UNITREE_B2_PIPER_CFG.init_state.joint_pos.update({
+    "arm_joint.*": 0.0,
+})
 UNITREE_B2_PIPER_CFG.actuators["arms"] = ImplicitActuatorCfg(
     joint_names_expr="arm_joint.*",
     effort_limit_sim=100.0,

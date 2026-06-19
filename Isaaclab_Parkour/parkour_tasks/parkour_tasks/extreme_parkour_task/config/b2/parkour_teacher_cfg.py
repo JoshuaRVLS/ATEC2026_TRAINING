@@ -2,7 +2,7 @@ from isaaclab.assets import ArticulationCfg
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 from isaaclab.utils import configclass
 
-from atec_rl_lab.assets.robots.b2 import UNITREE_B2_CFG
+from atec_rl_lab.assets.robots.b2 import UNITREE_B2_PIPER_CFG
 from parkour_isaaclab.envs import ParkourManagerBasedRLEnvCfg
 from parkour_isaaclab.terrains.extreme_parkour.config.parkour import EXTREME_PARKOUR_TERRAINS_CFG
 from parkour_tasks.default_cfg import ParkourDefaultSceneCfg, VIEWER
@@ -23,7 +23,7 @@ from .parkour_mdp_cfg import (
 
 @configclass
 class B2ParkourTeacherSceneCfg(ParkourDefaultSceneCfg):
-    robot: ArticulationCfg = UNITREE_B2_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    robot: ArticulationCfg = UNITREE_B2_PIPER_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
     height_scanner = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base_link",
         offset=RayCasterCfg.OffsetCfg(pos=(0.375, 0.0, 20.0)),
