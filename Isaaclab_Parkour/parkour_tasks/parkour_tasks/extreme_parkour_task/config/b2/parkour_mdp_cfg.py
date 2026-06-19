@@ -89,6 +89,61 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
             "asset_cfg": SceneEntityCfg("robot"),
         },
     )
+    reward_joint_mirror = RewTerm(
+        func=rewards.reward_joint_mirror,
+        weight=-0.05,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "mirror_joints": [
+                ["FR_(hip|thigh|calf).*", "RL_(hip|thigh|calf).*"],
+                ["FL_(hip|thigh|calf).*", "RR_(hip|thigh|calf).*"],
+            ],
+        },
+    )
+    reward_action_mirror = RewTerm(
+        func=rewards.reward_action_mirror,
+        weight=-0.02,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "mirror_joints": [
+                ["FR_(hip|thigh|calf).*", "RL_(hip|thigh|calf).*"],
+                ["FL_(hip|thigh|calf).*", "RR_(hip|thigh|calf).*"],
+            ],
+        },
+    )
+    reward_feet_height_body = RewTerm(
+        func=rewards.reward_feet_height_body,
+        weight=-5.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=B2_FEET),
+            "command_name": "base_velocity",
+            "target_height": -0.4,
+            "tanh_mult": 2.0,
+        },
+    )
+    reward_feet_slide = RewTerm(
+        func=rewards.reward_feet_slide,
+        weight=-0.05,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=B2_FEET),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=B2_FEET),
+        },
+    )
+    reward_feet_contact_without_cmd = RewTerm(
+        func=rewards.reward_feet_contact_without_cmd,
+        weight=0.1,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=B2_FEET),
+            "command_name": "base_velocity",
+        },
+    )
+    reward_upward = RewTerm(
+        func=rewards.reward_upward,
+        weight=3.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+        },
+    )
     reward_upright_alive = RewTerm(
         func=rewards.reward_upright_alive,
         weight=1.0,
@@ -137,16 +192,19 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
     def __post_init__(self):
         super().__post_init__()
         self.reward_tracking_goal_vel.func = rewards.reward_tracking_goal_vel_positive
-        self.reward_tracking_goal_vel.weight = 0.25
+        self.reward_tracking_goal_vel.weight = 0.0
         self.reward_tracking_yaw.func = rewards.reward_yaw_when_moving
-        self.reward_tracking_yaw.weight = 0.25
-        self.reward_collision.weight = -6.0
-        self.reward_hip_pos.weight = -0.20
-        self.reward_dof_error.weight = -0.01
-        self.reward_action_rate.weight = -0.04
-        self.reward_orientation.weight = -3.0
-        self.reward_lin_vel_z.weight = -1.0
+        self.reward_tracking_yaw.weight = 0.0
+        self.reward_collision.weight = -1.0
+        self.reward_hip_pos.weight = 0.0
+        self.reward_dof_error.weight = -1.0
+        self.reward_action_rate.weight = -0.01
+        self.reward_orientation.weight = 0.0
+        self.reward_lin_vel_z.weight = -2.0
         self.reward_feet_stumble.weight = -1.0
+        self.reward_torques.weight = -1.0e-5
+        self.reward_dof_acc.weight = -1.0e-7
+        self.reward_delta_torques.weight = -1.0e-7
 
 
 @configclass
@@ -163,7 +221,7 @@ class B2ActionsCfg(ActionsCfg):
         self.joint_pos.joint_names = B2_LEG_JOINTS
         self.joint_pos.preserve_order = True
         self.joint_pos.scale = {".*_hip_joint": 0.125, "^(?!.*_hip_joint).*": 0.25}
-        self.joint_pos.clip = {".*": (-4.8, 4.8)}
+        self.joint_pos.clip = {".*": (-100.0, 100.0)}
 
 
 @configclass

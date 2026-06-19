@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import torch
+import isaaclab.utils.math as math_utils
 from typing import TYPE_CHECKING
 from isaaclab.managers import ManagerTermBase, SceneEntityCfg
 from isaaclab.sensors import ContactSensor
@@ -246,6 +247,102 @@ def reward_backward_velocity(
 ) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     return torch.square(torch.clamp(-asset.data.root_lin_vel_b[:, 0], min=0.0))
+
+def reward_joint_mirror(
+    env: ParkourManagerBasedRLEnv,
+    mirror_joints: list[list[str]],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    if not hasattr(env, "parkour_joint_mirror_cache"):
+        env.parkour_joint_mirror_cache = [
+            [asset.find_joints(joint_name)[0] for joint_name in joint_pair] for joint_pair in mirror_joints
+        ]
+    reward = torch.zeros(env.num_envs, device=env.device)
+    for joint_pair in env.parkour_joint_mirror_cache:
+        reward += torch.sum(torch.square(asset.data.joint_pos[:, joint_pair[0]] - asset.data.joint_pos[:, joint_pair[1]]), dim=-1)
+    reward *= 1.0 / max(len(mirror_joints), 1)
+    return reward * _upright_mask(env, asset_cfg).float()
+
+def reward_action_mirror(
+    env: ParkourManagerBasedRLEnv,
+    mirror_joints: list[list[str]],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    if not hasattr(env, "parkour_action_mirror_cache"):
+        action_joint_ids = _controlled_joint_ids(env)
+        action_joint_ids = action_joint_ids.tolist() if hasattr(action_joint_ids, "tolist") else list(action_joint_ids)
+        action_index_by_joint_id = {int(joint_id): index for index, joint_id in enumerate(action_joint_ids)}
+        env.parkour_action_mirror_cache = []
+        for joint_pair in mirror_joints:
+            left_ids = asset.find_joints(joint_pair[0])[0]
+            right_ids = asset.find_joints(joint_pair[1])[0]
+            left_action_ids = [action_index_by_joint_id[int(joint_id)] for joint_id in left_ids]
+            right_action_ids = [action_index_by_joint_id[int(joint_id)] for joint_id in right_ids]
+            env.parkour_action_mirror_cache.append((left_action_ids, right_action_ids))
+    actions = env.action_manager.get_term("joint_pos").raw_actions
+    reward = torch.zeros(env.num_envs, device=env.device)
+    for left_action_ids, right_action_ids in env.parkour_action_mirror_cache:
+        left_actions = torch.abs(actions[:, left_action_ids])
+        right_actions = torch.abs(actions[:, right_action_ids])
+        reward += torch.sum(torch.square(left_actions - right_actions), dim=-1)
+    reward *= 1.0 / max(len(mirror_joints), 1)
+    return reward * _upright_mask(env, asset_cfg).float()
+
+def reward_feet_height_body(
+    env: ParkourManagerBasedRLEnv,
+    command_name: str,
+    asset_cfg: SceneEntityCfg,
+    target_height: float,
+    tanh_mult: float,
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    foot_pos_rel = asset.data.body_pos_w[:, asset_cfg.body_ids, :] - asset.data.root_pos_w[:, :].unsqueeze(1)
+    foot_vel_rel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :] - asset.data.root_lin_vel_w[:, :].unsqueeze(1)
+    foot_pos_b = torch.zeros_like(foot_pos_rel)
+    foot_vel_b = torch.zeros_like(foot_vel_rel)
+    for foot_id in range(len(asset_cfg.body_ids)):
+        foot_pos_b[:, foot_id, :] = math_utils.quat_apply_inverse(asset.data.root_quat_w, foot_pos_rel[:, foot_id, :])
+        foot_vel_b[:, foot_id, :] = math_utils.quat_apply_inverse(asset.data.root_quat_w, foot_vel_rel[:, foot_id, :])
+    foot_z_error = torch.square(foot_pos_b[:, :, 2] - target_height)
+    foot_speed = torch.tanh(tanh_mult * torch.norm(foot_vel_b[:, :, :2], dim=2))
+    reward = torch.sum(foot_z_error * foot_speed, dim=1)
+    reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > 0.1
+    return reward * _upright_mask(env, SceneEntityCfg("robot")).float()
+
+def reward_feet_slide(
+    env: ParkourManagerBasedRLEnv,
+    sensor_cfg: SceneEntityCfg,
+    asset_cfg: SceneEntityCfg,
+) -> torch.Tensor:
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contacts = contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+    asset: Articulation = env.scene[asset_cfg.name]
+    foot_vel_rel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :] - asset.data.root_lin_vel_w[:, :].unsqueeze(1)
+    foot_vel_b = torch.zeros_like(foot_vel_rel)
+    for foot_id in range(len(asset_cfg.body_ids)):
+        foot_vel_b[:, foot_id, :] = math_utils.quat_apply_inverse(asset.data.root_quat_w, foot_vel_rel[:, foot_id, :])
+    foot_lateral_vel = torch.sqrt(torch.sum(torch.square(foot_vel_b[:, :, :2]), dim=2))
+    return torch.sum(foot_lateral_vel * contacts, dim=1) * _upright_mask(env, SceneEntityCfg("robot")).float()
+
+def reward_feet_contact_without_cmd(
+    env: ParkourManagerBasedRLEnv,
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+) -> torch.Tensor:
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contact = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
+    reward = torch.sum(contact, dim=-1).float()
+    reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) < 0.1
+    return reward * _upright_mask(env).float()
+
+def reward_upward(
+    env: ParkourManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    return torch.square(1.0 - asset.data.projected_gravity_b[:, 2])
 
 def _upright_mask(
     env: ParkourManagerBasedRLEnv,

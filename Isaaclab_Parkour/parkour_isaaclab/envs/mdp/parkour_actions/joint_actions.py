@@ -30,7 +30,8 @@ class DelayedJointPositionAction(JointPositionAction):
         self._action_delay_steps = cfg.action_delay_steps
         self._use_delay = cfg.use_delay
         self.env = env 
-        joint_names = [self._asset.joint_names[joint_id] for joint_id in self._joint_ids]
+        joint_ids = self._joint_ids.tolist() if hasattr(self._joint_ids, "tolist") else list(self._joint_ids)
+        joint_names = [self._asset.joint_names[int(joint_id)] for joint_id in joint_ids]
         omni.log.info(f"[DelayedJointPositionAction] controlled joints: {joint_names}")
 
     def apply_actions(self):
