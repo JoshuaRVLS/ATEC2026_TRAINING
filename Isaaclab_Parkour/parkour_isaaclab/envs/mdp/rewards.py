@@ -87,7 +87,8 @@ def reward_dof_error(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     ) -> torch.Tensor: 
     asset: Articulation = env.scene[asset_cfg.name]
-    return torch.sum(torch.square(asset.data.joint_pos - asset.data.default_joint_pos), dim=1)
+    joint_ids = _controlled_joint_ids(env)
+    return torch.sum(torch.square(asset.data.joint_pos[:, joint_ids] - asset.data.default_joint_pos[:, joint_ids]), dim=1)
 
 def reward_hip_pos(
     env: ParkourManagerBasedRLEnv,        
@@ -208,6 +209,43 @@ def reward_tracking_goal_vel_positive(
     proj_vel = torch.sum(target_vel * asset.data.root_vel_w[:, :2], dim=-1)
     command_vel = env.command_manager.get_command("base_velocity")[:, 0]
     return torch.clamp(proj_vel / (command_vel + 1e-5), min=0.0, max=1.5)
+
+def reward_track_forward_velocity(
+    env: ParkourManagerBasedRLEnv,
+    command_name: str = "base_velocity",
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    std: float = 0.25,
+    max_roll: float = 0.75,
+    max_pitch: float = 0.75,
+    min_height: float = 0.15,
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    command_x = torch.clamp(env.command_manager.get_command(command_name)[:, 0], min=0.05)
+    forward_vel = asset.data.root_lin_vel_b[:, 0]
+    reward = torch.exp(-torch.square(command_x - forward_vel) / (std * std))
+    return reward * _upright_mask(env, asset_cfg, max_roll, max_pitch, min_height).float()
+
+def reward_forward_velocity_positive(
+    env: ParkourManagerBasedRLEnv,
+    command_name: str = "base_velocity",
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    max_ratio: float = 1.5,
+    max_roll: float = 0.75,
+    max_pitch: float = 0.75,
+    min_height: float = 0.15,
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    command_x = torch.clamp(env.command_manager.get_command(command_name)[:, 0], min=0.05)
+    forward_vel = asset.data.root_lin_vel_b[:, 0]
+    reward = torch.clamp(forward_vel / command_x, min=0.0, max=max_ratio)
+    return reward * _upright_mask(env, asset_cfg, max_roll, max_pitch, min_height).float()
+
+def reward_backward_velocity(
+    env: ParkourManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    return torch.square(torch.clamp(-asset.data.root_lin_vel_b[:, 0], min=0.0))
 
 def _upright_mask(
     env: ParkourManagerBasedRLEnv,

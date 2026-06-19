@@ -58,9 +58,40 @@ class B2TeacherRewardsCfg(TeacherRewardsCfg):
 
 @configclass
 class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
+    reward_track_forward_velocity = RewTerm(
+        func=rewards.reward_track_forward_velocity,
+        weight=3.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "command_name": "base_velocity",
+            "std": 0.20,
+            "max_roll": 0.75,
+            "max_pitch": 0.75,
+            "min_height": 0.15,
+        },
+    )
+    reward_forward_velocity_positive = RewTerm(
+        func=rewards.reward_forward_velocity_positive,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "command_name": "base_velocity",
+            "max_ratio": 1.5,
+            "max_roll": 0.75,
+            "max_pitch": 0.75,
+            "min_height": 0.15,
+        },
+    )
+    reward_backward_velocity = RewTerm(
+        func=rewards.reward_backward_velocity,
+        weight=-4.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+        },
+    )
     reward_upright_alive = RewTerm(
         func=rewards.reward_upright_alive,
-        weight=0.5,
+        weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "max_roll": 0.75,
@@ -70,7 +101,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
     )
     reward_fall_penalty = RewTerm(
         func=rewards.reward_fall_penalty,
-        weight=-8.0,
+        weight=-12.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "max_roll": 1.0,
@@ -80,19 +111,19 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
     )
     reward_progress_to_goal = RewTerm(
         func=rewards.reward_progress_to_goal,
-        weight=0.8,
+        weight=0.1,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "parkour_name": "base_parkour",
-            "clip": 0.25,
+            "clip": 0.10,
         },
     )
     reward_progress_from_start = RewTerm(
         func=rewards.reward_progress_from_start,
-        weight=0.25,
+        weight=0.05,
         params={
             "parkour_name": "base_parkour",
-            "clip": 0.25,
+            "clip": 0.10,
         },
     )
     reward_goal_reached = RewTerm(
@@ -106,14 +137,14 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
     def __post_init__(self):
         super().__post_init__()
         self.reward_tracking_goal_vel.func = rewards.reward_tracking_goal_vel_positive
-        self.reward_tracking_goal_vel.weight = 1.5
+        self.reward_tracking_goal_vel.weight = 0.25
         self.reward_tracking_yaw.func = rewards.reward_yaw_when_moving
-        self.reward_tracking_yaw.weight = 0.5
-        self.reward_collision.weight = -5.0
-        self.reward_hip_pos.weight = -0.25
-        self.reward_dof_error.weight = -0.03
-        self.reward_action_rate.weight = -0.08
-        self.reward_orientation.weight = -2.0
+        self.reward_tracking_yaw.weight = 0.25
+        self.reward_collision.weight = -6.0
+        self.reward_hip_pos.weight = -0.20
+        self.reward_dof_error.weight = -0.01
+        self.reward_action_rate.weight = -0.04
+        self.reward_orientation.weight = -3.0
         self.reward_lin_vel_z.weight = -1.0
         self.reward_feet_stumble.weight = -1.0
 
