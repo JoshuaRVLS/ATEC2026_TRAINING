@@ -65,3 +65,7 @@ class DelayedJointPositionAction(JointPositionAction):
     @property
     def action_history_buf(self):
         return self._action_history_buf
+
+    @property
+    def joint_ids(self):
+        return self._joint_ids

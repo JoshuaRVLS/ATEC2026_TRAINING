@@ -44,6 +44,20 @@ class ExtremeParkourObservations(ManagerTermBase):
         self.env = env
         self.base_body_name = cfg.params.get("base_body_name", "base")
         self.body_id = self.asset.find_bodies(self.base_body_name)[0]
+
+    def _controlled_joint_ids(self, env: ParkourManagerBasedRLEnv):
+        action_term = env.action_manager.get_term("joint_pos")
+        return getattr(action_term, "joint_ids", slice(None))
+
+    def _resize_history_buffer(self, obs_buf: torch.Tensor):
+        if self._obs_history_buffer.shape[-1] != obs_buf.shape[-1]:
+            self._obs_history_buffer = torch.zeros(
+                self.num_envs,
+                self.history_length,
+                obs_buf.shape[-1],
+                device=self.device,
+                dtype=obs_buf.dtype,
+            )
         
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
@@ -71,6 +85,10 @@ class ExtremeParkourObservations(ManagerTermBase):
             self.delta_next_yaw = self.parkour_event.next_target_yaw - wrap_to_pi(yaw)
             self.measured_heights = self._get_heights()
         commands = env.command_manager.get_command('base_velocity')
+        joint_ids = self._controlled_joint_ids(env)
+        joint_pos_rel = self.asset.data.joint_pos[:, joint_ids] - self.asset.data.default_joint_pos[:, joint_ids]
+        joint_vel = self.asset.data.joint_vel[:, joint_ids] * 0.05
+        action_history = env.action_manager.get_term('joint_pos').action_history_buf[:, -1]
         obs_buf = torch.cat((
                             self.asset.data.root_ang_vel_b * 0.25,   #[1,3] 0~2
                             imu_obs,    #[1,2] 3~4
@@ -81,13 +99,14 @@ class ExtremeParkourObservations(ManagerTermBase):
                             commands[:, 0:1],  #[1,1] 9
                             env_idx_tensor,
                             invert_env_idx_tensor,
-                            self.asset.data.joint_pos - self.asset.data.default_joint_pos,
-                            self.asset.data.joint_vel * 0.05 ,
-                            env.action_manager.get_term('joint_pos').action_history_buf[:, -1],
+                            joint_pos_rel,
+                            joint_vel,
+                            action_history,
                             self._get_contact_fill(),
                             ),dim=-1)
         priv_explicit = self._get_priv_explicit()
         priv_latent = self._get_priv_latent()
+        self._resize_history_buffer(obs_buf)
         observations = torch.cat([obs_buf, #53
                                   self.measured_heights, #132
                                   priv_explicit, # 9
@@ -171,6 +190,10 @@ class ProprioLidarParkourObservations(ExtremeParkourObservations):
             self.delta_next_yaw = self.parkour_event.next_target_yaw - wrap_to_pi(yaw)
             self.measured_heights = self._get_heights()
         commands = env.command_manager.get_command("base_velocity")
+        joint_ids = self._controlled_joint_ids(env)
+        joint_pos_rel = self.asset.data.joint_pos[:, joint_ids] - self.asset.data.default_joint_pos[:, joint_ids]
+        joint_vel = self.asset.data.joint_vel[:, joint_ids] * 0.05
+        action_history = env.action_manager.get_term("joint_pos").action_history_buf[:, -1]
         obs_buf = torch.cat(
             (
                 self.asset.data.root_ang_vel_b * 0.25,
@@ -182,14 +205,15 @@ class ProprioLidarParkourObservations(ExtremeParkourObservations):
                 commands[:, 0:1],
                 env_idx_tensor,
                 invert_env_idx_tensor,
-                self.asset.data.joint_pos - self.asset.data.default_joint_pos,
-                self.asset.data.joint_vel * 0.05,
-                env.action_manager.get_term("joint_pos").action_history_buf[:, -1],
+                joint_pos_rel,
+                joint_vel,
+                action_history,
                 self._get_contact_fill(),
             ),
             dim=-1,
         )
         obs_buf[:, 6:8] = 0
+        self._resize_history_buffer(obs_buf)
         observations = torch.cat(
             [
                 obs_buf,
