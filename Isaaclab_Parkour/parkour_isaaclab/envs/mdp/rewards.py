@@ -17,6 +17,15 @@ if TYPE_CHECKING:
 import cv2
 import numpy as np 
 
+def _joint_pos_action_term(env: ParkourManagerBasedRLEnv):
+    return env.action_manager.get_term("joint_pos")
+
+def _controlled_joint_ids(env: ParkourManagerBasedRLEnv):
+    return getattr(_joint_pos_action_term(env), "joint_ids", slice(None))
+
+def _controlled_action_dim(env: ParkourManagerBasedRLEnv) -> int:
+    return _joint_pos_action_term(env).raw_actions.shape[-1]
+
 class reward_feet_edge(ManagerTermBase):
     def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
         super().__init__(cfg, env)
@@ -71,7 +80,7 @@ def reward_torques(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     ) -> torch.Tensor: 
     asset: Articulation = env.scene[asset_cfg.name]
-    return torch.sum(torch.square(asset.data.applied_torque), dim=1)
+    return torch.sum(torch.square(asset.data.applied_torque[:, _controlled_joint_ids(env)]), dim=1)
 
 def reward_dof_error(    
     env: ParkourManagerBasedRLEnv,        
@@ -98,8 +107,8 @@ def reward_ang_vel_xy(
 class reward_action_rate(ManagerTermBase):
     def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
         super().__init__(cfg, env)
-        asset: Articulation = env.scene[cfg.params["asset_cfg"].name]
-        self.previous_actions = torch.zeros(env.num_envs, 2,  asset.num_joints, dtype= torch.float ,device=self.device)
+        action_dim = _controlled_action_dim(env)
+        self.previous_actions = torch.zeros(env.num_envs, 2, action_dim, dtype= torch.float ,device=self.device)
         
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
@@ -118,8 +127,9 @@ class reward_action_rate(ManagerTermBase):
 class reward_dof_acc(ManagerTermBase):
     def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
         super().__init__(cfg, env)
-        asset: Articulation = env.scene[cfg.params["asset_cfg"].name]
-        self.previous_joint_vel = torch.zeros(env.num_envs, 2,  asset.num_joints, dtype= torch.float ,device=self.device)
+        self.joint_ids = _controlled_joint_ids(env)
+        action_dim = _controlled_action_dim(env)
+        self.previous_joint_vel = torch.zeros(env.num_envs, 2, action_dim, dtype= torch.float ,device=self.device)
         self.dt = env.cfg.decimation * env.cfg.sim.dt
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
@@ -134,7 +144,7 @@ class reward_dof_acc(ManagerTermBase):
         ) -> torch.Tensor:
         asset: Articulation = env.scene[asset_cfg.name]
         self.previous_joint_vel[:, 0, :] = self.previous_joint_vel[:, 1, :]
-        self.previous_joint_vel[:, 1, :] = asset.data.joint_vel
+        self.previous_joint_vel[:, 1, :] = asset.data.joint_vel[:, self.joint_ids]
         return torch.sum(torch.square((self.previous_joint_vel[:, 1, :] - self.previous_joint_vel[:,0,:]) / self.dt), dim=1)
         
 def reward_lin_vel_z(
@@ -325,7 +335,9 @@ class reward_delta_torques(ManagerTermBase):
     def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
         super().__init__(cfg, env)
         self.asset: Articulation = env.scene[cfg.params["asset_cfg"].name]
-        self.previous_torque = torch.zeros(env.num_envs, 2,  self.asset.num_joints, dtype= torch.float ,device=self.device)
+        self.joint_ids = _controlled_joint_ids(env)
+        action_dim = _controlled_action_dim(env)
+        self.previous_torque = torch.zeros(env.num_envs, 2, action_dim, dtype= torch.float ,device=self.device)
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
@@ -338,7 +350,7 @@ class reward_delta_torques(ManagerTermBase):
         asset_cfg: SceneEntityCfg,
         ) -> torch.Tensor:
         self.previous_torque[:, 0, :] = self.previous_torque[:, 1, :]
-        self.previous_torque[:, 1, :] = self.asset.data.applied_torque
+        self.previous_torque[:, 1, :] = self.asset.data.applied_torque[:, self.joint_ids]
         return torch.sum(torch.square((self.previous_torque[:, 1, :] - self.previous_torque[:,0,:])), dim=1)
 
 def reward_collision(
