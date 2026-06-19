@@ -174,6 +174,7 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2(UnitreeB2ProprioLidarParkourEnvCfg):
 
     def __post_init__(self):
         super().__post_init__()
+        self._apply_locomotion_v2_reward_profile()
         self.parkours.base_parkour.next_goal_threshold = 0.45
         self.parkours.base_parkour.curriculum_move_up_scale = 0.5
         self.parkours.base_parkour.curriculum_move_down_scale = 0.25
@@ -196,6 +197,40 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2(UnitreeB2ProprioLidarParkourEnvCfg):
                 else:
                     sub_terrain.proportion = 0.075
                     sub_terrain.noise_range = (0.0, 0.01)
+
+    def _apply_locomotion_v2_reward_profile(self):
+        self.rewards.reward_collision.weight = -1.0
+        self.rewards.reward_tracking_goal_vel.weight = 0.0
+        self.rewards.reward_tracking_yaw.weight = 0.0
+        self.rewards.reward_hip_pos.weight = 0.0
+        self.rewards.reward_dof_error.weight = -1.0
+        self.rewards.reward_ang_vel_xy.weight = -0.05
+        self.rewards.reward_action_rate.weight = -0.01
+        self.rewards.reward_lin_vel_z.weight = -2.0
+        self.rewards.reward_orientation.weight = 0.0
+        self.rewards.reward_feet_stumble.weight = -1.0
+        self.rewards.reward_torques.weight = -1.0e-5
+        self.rewards.reward_dof_acc.weight = -1.0e-7
+        self.rewards.reward_delta_torques.weight = -1.0e-7
+        self.rewards.reward_forward_displacement.weight = 4.0
+        self.rewards.reward_no_forward_progress.weight = -2.0
+        self.rewards.reward_track_forward_velocity.weight = 1.0
+        self.rewards.reward_forward_velocity_positive.weight = 0.0
+        self.rewards.reward_backward_velocity.weight = -4.0
+        self.rewards.reward_joint_mirror.weight = -0.05
+        self.rewards.reward_action_mirror.weight = -0.02
+        self.rewards.reward_feet_height_body.weight = -0.5
+        self.rewards.reward_feet_air_time.weight = 0.4
+        self.rewards.reward_feet_contact_count.weight = -0.1
+        self.rewards.reward_trot_gait.weight = 0.35
+        self.rewards.reward_feet_slide.weight = -0.05
+        self.rewards.reward_feet_contact_without_cmd.weight = 0.1
+        self.rewards.reward_upward.weight = 3.0
+        self.rewards.reward_upright_alive.weight = 1.0
+        self.rewards.reward_fall_penalty.weight = -12.0
+        self.rewards.reward_progress_to_goal.weight = 0.15
+        self.rewards.reward_progress_from_start.weight = 0.05
+        self.rewards.reward_goal_reached.weight = 0.5
 
 
 @configclass
