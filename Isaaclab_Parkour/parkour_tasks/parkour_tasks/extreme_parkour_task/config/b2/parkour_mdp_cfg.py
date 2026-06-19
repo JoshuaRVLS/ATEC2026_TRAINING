@@ -58,9 +58,29 @@ class B2TeacherRewardsCfg(TeacherRewardsCfg):
 
 @configclass
 class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
+    reward_upright_alive = RewTerm(
+        func=rewards.reward_upright_alive,
+        weight=0.5,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "max_roll": 0.75,
+            "max_pitch": 0.75,
+            "min_height": 0.15,
+        },
+    )
+    reward_fall_penalty = RewTerm(
+        func=rewards.reward_fall_penalty,
+        weight=-8.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "max_roll": 1.0,
+            "max_pitch": 1.0,
+            "min_height": 0.0,
+        },
+    )
     reward_progress_to_goal = RewTerm(
         func=rewards.reward_progress_to_goal,
-        weight=3.0,
+        weight=0.8,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "parkour_name": "base_parkour",
@@ -69,7 +89,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
     )
     reward_progress_from_start = RewTerm(
         func=rewards.reward_progress_from_start,
-        weight=1.0,
+        weight=0.25,
         params={
             "parkour_name": "base_parkour",
             "clip": 0.25,
@@ -77,7 +97,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
     )
     reward_goal_reached = RewTerm(
         func=rewards.reward_goal_reached,
-        weight=5.0,
+        weight=2.0,
         params={
             "parkour_name": "base_parkour",
         },
@@ -86,16 +106,16 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
     def __post_init__(self):
         super().__post_init__()
         self.reward_tracking_goal_vel.func = rewards.reward_tracking_goal_vel_positive
-        self.reward_tracking_goal_vel.weight = 3.0
+        self.reward_tracking_goal_vel.weight = 1.5
         self.reward_tracking_yaw.func = rewards.reward_yaw_when_moving
-        self.reward_tracking_yaw.weight = 0.25
-        self.reward_collision.weight = -1.0
-        self.reward_hip_pos.weight = -0.1
-        self.reward_dof_error.weight = -0.01
-        self.reward_action_rate.weight = -0.02
-        self.reward_orientation.weight = -0.5
-        self.reward_lin_vel_z.weight = -0.5
-        self.reward_feet_stumble.weight = -0.5
+        self.reward_tracking_yaw.weight = 0.5
+        self.reward_collision.weight = -5.0
+        self.reward_hip_pos.weight = -0.25
+        self.reward_dof_error.weight = -0.03
+        self.reward_action_rate.weight = -0.08
+        self.reward_orientation.weight = -2.0
+        self.reward_lin_vel_z.weight = -1.0
+        self.reward_feet_stumble.weight = -1.0
 
 
 @configclass

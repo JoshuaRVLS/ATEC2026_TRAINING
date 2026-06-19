@@ -189,6 +189,7 @@ class ProprioLidarParkourObservations(ExtremeParkourObservations):
             ),
             dim=-1,
         )
+        obs_buf[:, 6:8] = 0
         observations = torch.cat(
             [
                 obs_buf,
@@ -197,7 +198,6 @@ class ProprioLidarParkourObservations(ExtremeParkourObservations):
             ],
             dim=-1,
         )
-        obs_buf[:, 6:8] = 0
         self._obs_history_buffer = torch.where(
             (env.episode_length_buf <= 1)[:, None, None],
             torch.stack([obs_buf] * self.history_length, dim=1),
