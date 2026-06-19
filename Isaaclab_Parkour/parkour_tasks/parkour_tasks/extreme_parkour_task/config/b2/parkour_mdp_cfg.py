@@ -75,7 +75,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
             "asset_cfg": SceneEntityCfg("robot"),
             "parkour_name": "base_parkour",
             "command_name": "base_velocity",
-            "min_speed": 0.05,
+            "min_speed": 0.12,
         },
     )
     reward_track_forward_velocity = RewTerm(
