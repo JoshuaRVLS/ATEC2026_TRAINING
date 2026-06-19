@@ -212,7 +212,8 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2_EVAL(UnitreeB2ProprioLidarParkourEnv
             self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.35)
         self.events.randomize_rigid_body_com = None
         self.events.randomize_rigid_body_mass = None
-        self.events.push_by_setting_velocity.interval_range_s = (8.0, 8.0)
+        if self.events.push_by_setting_velocity is not None:
+            self.events.push_by_setting_velocity.interval_range_s = (8.0, 8.0)
         self.commands.base_velocity.resampling_time_range = (60.0, 60.0)
 
 
