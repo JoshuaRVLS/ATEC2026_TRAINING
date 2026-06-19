@@ -161,11 +161,9 @@ class B2EventCfg(EventCfg):
 class B2ActionsCfg(ActionsCfg):
     def __post_init__(self):
         self.joint_pos.joint_names = B2_LEG_JOINTS
-        self.joint_pos.clip = {
-            ".*_hip_joint": (-1.2, 1.2),
-            ".*_thigh_joint": (-2.7, 3.5),
-            ".*_calf_joint": (-2.7, -0.5),
-        }
+        self.joint_pos.preserve_order = True
+        self.joint_pos.scale = {".*_hip_joint": 0.125, "^(?!.*_hip_joint).*": 0.25}
+        self.joint_pos.clip = {".*": (-4.8, 4.8)}
 
 
 @configclass
