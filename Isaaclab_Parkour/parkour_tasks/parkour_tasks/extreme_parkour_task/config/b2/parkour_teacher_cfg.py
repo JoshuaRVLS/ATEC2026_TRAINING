@@ -125,7 +125,7 @@ class UnitreeB2ProprioLidarParkourEnvCfg(UnitreeB2TeacherParkourEnvCfg):
         super().__post_init__()
         self.scene.num_envs = 4096
         self.scene.height_scanner.pattern_cfg.resolution = 0.15
-        self.scene.height_scanner.pattern_cfg.size = [1.65, 1.5]
+        self.scene.height_scanner.pattern_cfg.size = [2.4, 1.6]
         self.rewards.reward_collision.weight = -2.0
         self.rewards.reward_tracking_goal_vel.weight = 2.5
         self.rewards.reward_tracking_yaw.weight = 0.75
@@ -187,12 +187,14 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2(UnitreeB2ProprioLidarParkourEnvCfg):
         if self.scene.terrain.terrain_generator is not None:
             self.scene.terrain.max_init_terrain_level = 0
             self.scene.terrain.terrain_generator.random_difficulty = True
-            self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.15)
+            self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.30)
             for key, sub_terrain in self.scene.terrain.terrain_generator.sub_terrains.items():
                 if key == "parkour_flat":
-                    sub_terrain.proportion = 0.8
+                    sub_terrain.proportion = 0.45
+                elif key == "parkour_gap":
+                    sub_terrain.proportion = 0.25
                 else:
-                    sub_terrain.proportion = 0.05
+                    sub_terrain.proportion = 0.075
                     sub_terrain.noise_range = (0.0, 0.01)
 
 
@@ -210,7 +212,7 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2_EVAL(UnitreeB2ProprioLidarParkourEnv
             self.scene.terrain.terrain_generator.num_rows = 5
             self.scene.terrain.terrain_generator.num_cols = 5
             self.scene.terrain.terrain_generator.random_difficulty = True
-            self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.15)
+            self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.30)
         self.events.randomize_rigid_body_com = None
         self.events.randomize_rigid_body_mass = None
         if self.events.push_by_setting_velocity is not None:
@@ -227,5 +229,5 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2_PLAY(UnitreeB2ProprioLidarParkourEnv
         self.episode_length_s = 60.0
         self.scene.num_envs = 16
         if self.scene.terrain.terrain_generator is not None:
-            self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.15)
+            self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.30)
         self.events.push_by_setting_velocity = None

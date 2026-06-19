@@ -252,23 +252,28 @@ class reward_forward_displacement(ManagerTermBase):
     def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
         super().__init__(cfg, env)
         self.asset: Articulation = env.scene[cfg.params["asset_cfg"].name]
-        self.previous_x = self.asset.data.root_pos_w[:, 0].clone()
+        self.parkour_event: ParkourEvent = env.parkour_manager.get_term(cfg.params["parkour_name"])
+        self.previous_pos = self.asset.data.root_pos_w[:, :2].clone()
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
         if env_ids.numel() > 0:
-            self.previous_x[env_ids] = self.asset.data.root_pos_w[env_ids, 0]
+            self.previous_pos[env_ids] = self.asset.data.root_pos_w[env_ids, :2]
 
     def __call__(
         self,
         env: ParkourManagerBasedRLEnv,
         asset_cfg: SceneEntityCfg,
+        parkour_name: str,
         command_name: str = "base_velocity",
         clip: float = 0.08,
     ) -> torch.Tensor:
-        current_x = self.asset.data.root_pos_w[:, 0]
-        displacement = torch.clamp(current_x - self.previous_x, min=-clip, max=clip)
-        self.previous_x[:] = current_x
+        current_pos = self.asset.data.root_pos_w[:, :2]
+        target_direction = self.parkour_event.target_pos_rel
+        target_direction = target_direction / (torch.norm(target_direction, dim=-1, keepdim=True) + 1e-5)
+        displacement = torch.sum((current_pos - self.previous_pos) * target_direction, dim=-1)
+        displacement = torch.clamp(displacement, min=-clip, max=clip)
+        self.previous_pos[:] = current_pos
         command_x = env.command_manager.get_command(command_name)[:, 0]
         reward = torch.clamp(displacement / env.step_dt, min=0.0)
         reward *= command_x > 0.1
@@ -278,23 +283,27 @@ class reward_no_forward_progress(ManagerTermBase):
     def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
         super().__init__(cfg, env)
         self.asset: Articulation = env.scene[cfg.params["asset_cfg"].name]
-        self.previous_x = self.asset.data.root_pos_w[:, 0].clone()
+        self.parkour_event: ParkourEvent = env.parkour_manager.get_term(cfg.params["parkour_name"])
+        self.previous_pos = self.asset.data.root_pos_w[:, :2].clone()
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         env_ids = sanitize_env_ids(env_ids, self.num_envs, self.device)
         if env_ids.numel() > 0:
-            self.previous_x[env_ids] = self.asset.data.root_pos_w[env_ids, 0]
+            self.previous_pos[env_ids] = self.asset.data.root_pos_w[env_ids, :2]
 
     def __call__(
         self,
         env: ParkourManagerBasedRLEnv,
         asset_cfg: SceneEntityCfg,
+        parkour_name: str,
         command_name: str = "base_velocity",
         min_speed: float = 0.05,
     ) -> torch.Tensor:
-        current_x = self.asset.data.root_pos_w[:, 0]
-        forward_speed = (current_x - self.previous_x) / env.step_dt
-        self.previous_x[:] = current_x
+        current_pos = self.asset.data.root_pos_w[:, :2]
+        target_direction = self.parkour_event.target_pos_rel
+        target_direction = target_direction / (torch.norm(target_direction, dim=-1, keepdim=True) + 1e-5)
+        forward_speed = torch.sum((current_pos - self.previous_pos) * target_direction, dim=-1) / env.step_dt
+        self.previous_pos[:] = current_pos
         command_x = env.command_manager.get_command(command_name)[:, 0]
         penalty = (command_x > 0.1) & (forward_speed < min_speed)
         return penalty.float() * _upright_mask(env, asset_cfg).float()
@@ -324,6 +333,50 @@ def reward_feet_contact_count(
     penalty = (contact_num != expect_contact_num).float()
     penalty *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > 0.1
     return penalty * _upright_mask(env).float()
+
+class reward_trot_gait(ManagerTermBase):
+    def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self.contact_sensor: ContactSensor = env.scene.sensors[cfg.params["sensor_cfg"].name]
+        synced_feet_pair_names = cfg.params["synced_feet_pair_names"]
+        self.synced_feet_pairs = [
+            self.contact_sensor.find_bodies(synced_feet_pair_names[0])[0],
+            self.contact_sensor.find_bodies(synced_feet_pair_names[1])[0],
+        ]
+
+    def __call__(
+        self,
+        env: ParkourManagerBasedRLEnv,
+        command_name: str,
+        sensor_cfg: SceneEntityCfg,
+        synced_feet_pair_names,
+        std: float = 0.5,
+        max_err: float = 0.2,
+        command_threshold: float = 0.1,
+    ) -> torch.Tensor:
+        sync_reward = self._sync_reward(self.synced_feet_pairs[0][0], self.synced_feet_pairs[0][1], std, max_err)
+        sync_reward *= self._sync_reward(self.synced_feet_pairs[1][0], self.synced_feet_pairs[1][1], std, max_err)
+        async_reward = self._async_reward(self.synced_feet_pairs[0][0], self.synced_feet_pairs[1][0], std, max_err)
+        async_reward *= self._async_reward(self.synced_feet_pairs[0][1], self.synced_feet_pairs[1][1], std, max_err)
+        async_reward *= self._async_reward(self.synced_feet_pairs[0][0], self.synced_feet_pairs[1][1], std, max_err)
+        async_reward *= self._async_reward(self.synced_feet_pairs[1][0], self.synced_feet_pairs[0][1], std, max_err)
+        reward = sync_reward * async_reward
+        reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > command_threshold
+        return reward * _upright_mask(env).float()
+
+    def _sync_reward(self, foot_0: int, foot_1: int, std: float, max_err: float) -> torch.Tensor:
+        air_time = self.contact_sensor.data.current_air_time
+        contact_time = self.contact_sensor.data.current_contact_time
+        se_air = torch.clamp(torch.square(air_time[:, foot_0] - air_time[:, foot_1]), max=max_err * max_err)
+        se_contact = torch.clamp(torch.square(contact_time[:, foot_0] - contact_time[:, foot_1]), max=max_err * max_err)
+        return torch.exp(-(se_air + se_contact) / std)
+
+    def _async_reward(self, foot_0: int, foot_1: int, std: float, max_err: float) -> torch.Tensor:
+        air_time = self.contact_sensor.data.current_air_time
+        contact_time = self.contact_sensor.data.current_contact_time
+        se_act_0 = torch.clamp(torch.square(air_time[:, foot_0] - contact_time[:, foot_1]), max=max_err * max_err)
+        se_act_1 = torch.clamp(torch.square(contact_time[:, foot_0] - air_time[:, foot_1]), max=max_err * max_err)
+        return torch.exp(-(se_act_0 + se_act_1) / std)
 
 def reward_joint_mirror(
     env: ParkourManagerBasedRLEnv,

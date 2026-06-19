@@ -63,6 +63,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
         weight=4.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
+            "parkour_name": "base_parkour",
             "command_name": "base_velocity",
             "clip": 0.08,
         },
@@ -72,6 +73,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
         weight=-2.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
+            "parkour_name": "base_parkour",
             "command_name": "base_velocity",
             "min_speed": 0.05,
         },
@@ -157,6 +159,18 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
             "expect_contact_num": 2,
         },
     )
+    reward_trot_gait = RewTerm(
+        func=rewards.reward_trot_gait,
+        weight=0.35,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=B2_FEET),
+            "command_name": "base_velocity",
+            "synced_feet_pair_names": (("FL_foot", "RR_foot"), ("FR_foot", "RL_foot")),
+            "std": 0.5,
+            "max_err": 0.2,
+            "command_threshold": 0.1,
+        },
+    )
     reward_feet_slide = RewTerm(
         func=rewards.reward_feet_slide,
         weight=-0.05,
@@ -202,24 +216,24 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
     )
     reward_progress_to_goal = RewTerm(
         func=rewards.reward_progress_to_goal,
-        weight=0.0,
+        weight=0.15,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "parkour_name": "base_parkour",
-            "clip": 0.10,
+            "clip": 0.12,
         },
     )
     reward_progress_from_start = RewTerm(
         func=rewards.reward_progress_from_start,
-        weight=0.0,
+        weight=0.05,
         params={
             "parkour_name": "base_parkour",
-            "clip": 0.10,
+            "clip": 0.12,
         },
     )
     reward_goal_reached = RewTerm(
         func=rewards.reward_goal_reached,
-        weight=0.0,
+        weight=0.5,
         params={
             "parkour_name": "base_parkour",
         },
