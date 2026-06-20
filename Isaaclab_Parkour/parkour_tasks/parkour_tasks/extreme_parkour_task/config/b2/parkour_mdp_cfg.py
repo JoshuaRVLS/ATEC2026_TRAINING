@@ -58,6 +58,15 @@ class B2TeacherRewardsCfg(TeacherRewardsCfg):
 
 @configclass
 class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
+    reward_track_lin_vel_xy_exp = RewTerm(
+        func=rewards.reward_track_lin_vel_xy_exp,
+        weight=3.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "command_name": "base_velocity",
+            "std": 0.5,
+        },
+    )
     reward_forward_displacement = RewTerm(
         func=rewards.reward_forward_displacement,
         weight=4.0,

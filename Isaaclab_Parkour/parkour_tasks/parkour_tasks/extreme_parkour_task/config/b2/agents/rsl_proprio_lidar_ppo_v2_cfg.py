@@ -9,6 +9,6 @@ class UnitreeB2ProprioLidarParkourV2PPORunnerCfg(UnitreeB2ProprioLidarParkourPPO
     experiment_name = "unitree_b2_parkour_proprio_lidar_v2"
 
     def __post_init__(self):
-        self.policy.init_noise_std = 0.5
-        self.algorithm.entropy_coef = 0.001
-        self.algorithm.learning_rate = 3.0e-4
+        self.policy.init_noise_std = 1.0
+        self.algorithm.entropy_coef = 0.01
+        self.algorithm.learning_rate = 1.0e-3

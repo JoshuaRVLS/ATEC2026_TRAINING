@@ -226,6 +226,21 @@ def reward_track_forward_velocity(
     reward = torch.exp(-torch.square(command_x - forward_vel) / (std * std))
     return reward * _upright_mask(env, asset_cfg, max_roll, max_pitch, min_height).float()
 
+def reward_track_lin_vel_xy_exp(
+    env: ParkourManagerBasedRLEnv,
+    command_name: str = "base_velocity",
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    std: float = 0.5,
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    command = env.command_manager.get_command(command_name)
+    command_xy = torch.zeros_like(asset.data.root_lin_vel_b[:, :2])
+    command_xy[:, 0] = command[:, 0]
+    if command.shape[1] > 1:
+        command_xy[:, 1] = command[:, 1]
+    velocity_error = torch.sum(torch.square(command_xy - asset.data.root_lin_vel_b[:, :2]), dim=1)
+    return torch.exp(-velocity_error / (std * std))
+
 def reward_forward_velocity_positive(
     env: ParkourManagerBasedRLEnv,
     command_name: str = "base_velocity",
