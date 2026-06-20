@@ -216,6 +216,7 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2(UnitreeB2ProprioLidarParkourEnvCfg):
         self.rewards.reward_no_forward_progress.weight = -6.0
         self.rewards.reward_track_forward_velocity.weight = 4.0
         self.rewards.reward_forward_velocity_positive.weight = 2.0
+        self.rewards.reward_base_height.weight = -6.0
         self.rewards.reward_backward_velocity.weight = -4.0
         self.rewards.reward_joint_mirror.weight = -0.05
         self.rewards.reward_action_mirror.weight = -0.02

@@ -87,7 +87,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
             "std": 0.25,
             "max_roll": 0.75,
             "max_pitch": 0.75,
-            "min_height": 0.15,
+            "min_height": 0.42,
         },
     )
     reward_forward_velocity_positive = RewTerm(
@@ -99,7 +99,16 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
             "max_ratio": 1.5,
             "max_roll": 0.75,
             "max_pitch": 0.75,
-            "min_height": 0.15,
+            "min_height": 0.42,
+        },
+    )
+    reward_base_height = RewTerm(
+        func=rewards.reward_base_height,
+        weight=-6.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "target_height": 0.53,
+            "max_error": 0.5,
         },
     )
     reward_backward_velocity = RewTerm(
@@ -201,7 +210,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
             "asset_cfg": SceneEntityCfg("robot"),
             "max_roll": 0.75,
             "max_pitch": 0.75,
-            "min_height": 0.15,
+            "min_height": 0.42,
         },
     )
     reward_fall_penalty = RewTerm(
@@ -211,7 +220,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
             "asset_cfg": SceneEntityCfg("robot"),
             "max_roll": 1.0,
             "max_pitch": 1.0,
-            "min_height": 0.0,
+            "min_height": 0.35,
         },
     )
     reward_progress_to_goal = RewTerm(
@@ -288,6 +297,6 @@ class B2ProprioLidarTerminationsV2Cfg(TerminationsCfg):
             "asset_cfg": SceneEntityCfg("robot"),
             "max_roll": 1.5,
             "max_pitch": 1.5,
-            "min_height": -0.25,
+            "min_height": 0.25,
         },
     )

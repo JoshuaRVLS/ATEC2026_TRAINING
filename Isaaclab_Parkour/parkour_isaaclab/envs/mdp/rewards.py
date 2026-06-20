@@ -248,6 +248,16 @@ def reward_backward_velocity(
     asset: Articulation = env.scene[asset_cfg.name]
     return torch.square(torch.clamp(-asset.data.root_lin_vel_b[:, 0], min=0.0))
 
+def reward_base_height(
+    env: ParkourManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    target_height: float = 0.53,
+    max_error: float = 0.5,
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    height_error = torch.clamp(asset.data.root_pos_w[:, 2] - target_height, min=-max_error, max=max_error)
+    return torch.square(height_error)
+
 class reward_forward_displacement(ManagerTermBase):
     def __init__(self, cfg: RewardTermCfg, env: ParkourManagerBasedRLEnv):
         super().__init__(cfg, env)
