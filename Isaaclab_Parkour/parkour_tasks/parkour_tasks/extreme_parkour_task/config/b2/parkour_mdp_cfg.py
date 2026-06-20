@@ -64,7 +64,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "command_name": "base_velocity",
-            "std": 0.5,
+            "std": 0.2,
         },
     )
     reward_forward_displacement = RewTerm(
@@ -84,7 +84,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
             "asset_cfg": SceneEntityCfg("robot"),
             "parkour_name": "base_parkour",
             "command_name": "base_velocity",
-            "min_speed": 0.12,
+            "min_speed": 0.08,
         },
     )
     reward_track_forward_velocity = RewTerm(
@@ -165,7 +165,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=B2_FEET),
             "command_name": "base_velocity",
-            "threshold": 0.12,
+            "threshold": 0.10,
         },
     )
     reward_feet_contact_count = RewTerm(
