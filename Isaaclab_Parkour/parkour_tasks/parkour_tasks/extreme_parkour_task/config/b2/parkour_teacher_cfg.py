@@ -179,7 +179,7 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2(UnitreeB2ProprioLidarParkourEnvCfg):
         self.parkours.base_parkour.curriculum_move_up_scale = 0.5
         self.parkours.base_parkour.curriculum_move_down_scale = 0.25
         self.parkours.base_parkour.curriculum_min_up_distance = 0.8
-        self.commands.base_velocity.ranges.lin_vel_x = (0.35, 0.65)
+        self.commands.base_velocity.ranges.lin_vel_x = (0.20, 0.40)
         self.commands.base_velocity.heading_control_stiffness = 0.8
         self.commands.base_velocity.resampling_time_range = (8.0, 8.0)
         self.events.push_by_setting_velocity = None
@@ -188,14 +188,14 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2(UnitreeB2ProprioLidarParkourEnvCfg):
         if self.scene.terrain.terrain_generator is not None:
             self.scene.terrain.max_init_terrain_level = 0
             self.scene.terrain.terrain_generator.random_difficulty = True
-            self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.30)
+            self.scene.terrain.terrain_generator.difficulty_range = (0.0, 0.15)
             for key, sub_terrain in self.scene.terrain.terrain_generator.sub_terrains.items():
                 if key == "parkour_flat":
-                    sub_terrain.proportion = 0.45
+                    sub_terrain.proportion = 0.75
                 elif key == "parkour_gap":
-                    sub_terrain.proportion = 0.25
+                    sub_terrain.proportion = 0.10
                 else:
-                    sub_terrain.proportion = 0.075
+                    sub_terrain.proportion = 0.03
                     sub_terrain.noise_range = (0.0, 0.01)
 
     def _apply_locomotion_v2_reward_profile(self):
@@ -213,10 +213,10 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2(UnitreeB2ProprioLidarParkourEnvCfg):
         self.rewards.reward_dof_acc.weight = -1.0e-7
         self.rewards.reward_delta_torques.weight = -1.0e-7
         self.rewards.reward_forward_displacement.weight = 4.0
-        self.rewards.reward_no_forward_progress.weight = -6.0
+        self.rewards.reward_no_forward_progress.weight = -3.0
         self.rewards.reward_track_forward_velocity.weight = 4.0
         self.rewards.reward_forward_velocity_positive.weight = 2.0
-        self.rewards.reward_base_height.weight = -6.0
+        self.rewards.reward_base_height.weight = -2.0
         self.rewards.reward_backward_velocity.weight = -4.0
         self.rewards.reward_joint_mirror.weight = -0.05
         self.rewards.reward_action_mirror.weight = -0.02
