@@ -211,11 +211,11 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2(UnitreeB2ProprioLidarParkourEnvCfg):
         self.rewards.reward_torques.weight = -1.0e-5
         self.rewards.reward_dof_acc.weight = -1.0e-7
         self.rewards.reward_delta_torques.weight = -1.0e-7
-        self.rewards.reward_track_lin_vel_xy_exp.weight = 6.0
+        self.rewards.reward_track_lin_vel_xy_exp.weight = 8.0
         self.rewards.reward_forward_displacement.weight = 0.0
-        self.rewards.reward_no_forward_progress.weight = -4.0
+        self.rewards.reward_no_forward_progress.weight = -8.0
         self.rewards.reward_track_forward_velocity.weight = 0.0
-        self.rewards.reward_forward_velocity_positive.weight = 2.0
+        self.rewards.reward_forward_velocity_positive.weight = 4.0
         self.rewards.reward_base_height.weight = 0.0
         self.rewards.reward_backward_velocity.weight = -2.0
         self.rewards.reward_joint_mirror.weight = -0.05
@@ -225,8 +225,8 @@ class UnitreeB2ProprioLidarParkourEnvCfg_V2(UnitreeB2ProprioLidarParkourEnvCfg):
         self.rewards.reward_feet_contact_count.weight = -0.1
         self.rewards.reward_trot_gait.weight = 0.0
         self.rewards.reward_feet_slide.weight = 0.0
-        self.rewards.reward_feet_contact_without_cmd.weight = 0.1
-        self.rewards.reward_upward.weight = 0.2
+        self.rewards.reward_feet_contact_without_cmd.weight = 0.0
+        self.rewards.reward_upward.weight = 0.0
         self.rewards.reward_upright_alive.weight = 0.0
         self.rewards.reward_fall_penalty.weight = 0.0
         self.rewards.reward_progress_to_goal.weight = 0.0

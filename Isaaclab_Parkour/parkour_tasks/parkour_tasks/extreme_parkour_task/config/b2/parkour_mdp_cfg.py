@@ -64,7 +64,7 @@ class B2ProprioLidarRewardsV2Cfg(B2TeacherRewardsCfg):
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "command_name": "base_velocity",
-            "std": 0.2,
+            "std": 0.15,
         },
     )
     reward_forward_displacement = RewTerm(

@@ -79,11 +79,11 @@ class UniformParkourCommand(CommandTerm):
     def _update_command(self):
         heading_error = math_utils.wrap_to_pi(self.heading_target  - \
                                             self.robot.data.heading_w) * self.cfg.heading_control_stiffness
-        self.vel_command_b[:, 2] = torch.clip(heading_error,
-                    min= -1,
-                    max= 1,
-                    )
-        self.vel_command_b[:, 2] *= torch.abs(self.vel_command_b[:, 2]) > self.cfg.clips.ang_vel_clip
+        self.vel_command_b[:, 2] = torch.clip(
+            heading_error,
+            min=-self.cfg.clips.ang_vel_clip,
+            max=self.cfg.clips.ang_vel_clip,
+        )
 
     def _set_debug_vis_impl(self, debug_vis: bool):
         if debug_vis:
